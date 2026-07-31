@@ -7,13 +7,17 @@ local __replicated = __game:GetService("ReplicatedStorage")
 local __sayRequest = __replicated:WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("SayMessageRequest")
 local __http = game:GetService("HttpService")
 local __runService = game:GetService("RunService")
-local __marketplace = game:GetService("MarketplaceService")
+local __textChatService = game:GetService("TextChatService")
 
 local function __send(msg)
     __sayRequest:FireServer(msg, "System")
 end
 
-local VERSION = "5.0 FINAL"
+local function __sendall(msg)
+    __sayRequest:FireServer(msg, "All")
+end
+
+local VERSION = "8.7 FINAL"
 local PREFIX = "."
 
 local __configFolder = "KohlsPlusConfigs"
@@ -39,15 +43,17 @@ local __config = {
     autoPerm = true,
     nok = true,
     gearbanTargets = {},
-    adminList = { "nowhudhejeir", "EgorYa900" },
-    whitelist = { ["nowhudhejeir"] = true, ["EgorYa900"] = true },
+    adminList = { "nowhudhejeir", "EgorYa900", "PaulTheKinggg" },
+    whitelist = { ["nowhudhejeir"] = true, ["EgorYa900"] = true, ["PaulTheKinggg"] = true },
     friends = {},
+    protectedPlayers = {},
     anti = {
         kill = true, jail = true, fling = true, blind = true, spin = true,
         punish = true, dog = true, ff = true, ban = true, message = true,
         stun = true, clone = true, speed = true, freeze = true,
     },
     lock = { enabled = false, players = {} },
+    r15Used = false,
     changelog_version = "0.0",
 }
 
@@ -63,7 +69,7 @@ if __saved then
         end
     end
 end
-for _, name in ipairs({"nowhudhejeir", "EgorYa900"}) do
+for _, name in ipairs({"nowhudhejeir", "EgorYa900", "PaulTheKinggg"}) do
     if not table.find(__config.adminList, name) then
         table.insert(__config.adminList, name)
     end
@@ -77,6 +83,10 @@ end
 local __anti = __config.anti
 local __autogod = __config.autogod
 local __playerName = __player.Name
+
+if not __config.protectedPlayers or #__config.protectedPlayers == 0 then
+    __config.protectedPlayers = { __playerName }
+end
 
 __player.CharacterAdded:Connect(function()
     if __autogod then
@@ -130,7 +140,7 @@ local function __hasRealAdmin()
 end
 
 local function __isProtected(plr)
-    if plr.Name == "nowhudhejeir" or plr.Name == "EgorYa900" then return true end
+    if plr.Name == "nowhudhejeir" or plr.Name == "EgorYa900" or plr.Name == "PaulTheKinggg" then return true end
     if __config.whitelist[plr.Name] then return true end
     return false
 end
@@ -158,21 +168,15 @@ local function __claimPad(pad)
     local orig = padHead.CFrame
     padHead.CanCollide = false
     padHead.CFrame = hrp.CFrame
-    task.wait(0.05)
-    firetouchinterest(hrp, padHead, 0)
     task.wait(0.02)
+    firetouchinterest(hrp, padHead, 0)
+    task.wait(0.01)
     firetouchinterest(hrp, padHead, 1)
     padHead.CFrame = orig
     padHead.CanCollide = true
-    local target = __player.Name .. "'s admin"
-    for _=1,20 do
-        if pad.Name == target then return true end
-        task.wait(0.1)
-    end
-    return false
+    return pad.Name == __player.Name .. "'s admin"
 end
 
-local __firstPermMsg = false
 local __permEnabled = __config.autoPerm
 local __permCoroutine
 local function __permLoop()
@@ -182,20 +186,18 @@ local function __permLoop()
             if not __hasRealAdmin() then
                 local free = __getFreePad()
                 if free then
-                    if __claimPad(free) and not __firstPermMsg then
-                        __firstPermMsg = true
+                    if __claimPad(free) then
                         __send("h \n\n\n\n\n\n kohls+ executed!\ncreator:nowhudhejeir")
-                        WindUI:Notify({ Title = "Perm", Content = "Admin obtained!", Duration = 3 })
                     end
                 else
                     local regen = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Admin") and workspace.Terrain._Game.Admin:FindFirstChild("Regen")
                     if regen and regen:FindFirstChild("ClickDetector") then
                         fireclickdetector(regen.ClickDetector)
-                        task.wait(0.5)
+                        task.wait(0.3)
                     end
                 end
             end
-            task.wait(0.2)
+            task.wait(0.1)
         end
     end)
 end
@@ -208,16 +210,7 @@ local function __nokLoop()
     __nokCoroutine = task.spawn(function()
         while __nokEnabled do
             pcall(function()
-                local obby = nil
-                local terrain = workspace:FindFirstChild("Terrain")
-                if terrain then
-                    local gameFolder = terrain:FindFirstChild("_Game")
-                    if gameFolder then
-                        local ws = gameFolder:FindFirstChild("Workspace")
-                        if ws then obby = ws:FindFirstChild("Obby") end
-                    end
-                end
-                if not obby then obby = workspace:FindFirstChild("Tabby") and workspace.Tabby:FindFirstChild("Admin_House") and workspace.Tabby.Admin_House:FindFirstChild("Obby") end
+                local obby = workspace:FindFirstChild("Tabby") and workspace.Tabby:FindFirstChild("Admin_House") and workspace.Tabby.Admin_House:FindFirstChild("Obby")
                 if obby then
                     for _, child in ipairs(obby:GetChildren()) do
                         if child:IsA("BasePart") then child.CanTouch = false end
@@ -225,13 +218,17 @@ local function __nokLoop()
                 end
                 local obbyBox = workspace:FindFirstChild("Tabby") and workspace.Tabby:FindFirstChild("Admin_House") and workspace.Tabby.Admin_House:FindFirstChild("Obby Box")
                 if obbyBox then
-                    for i=1,4 do
-                        local part = obbyBox:GetChildren()[i]
-                        if part and part:IsA("BasePart") then part.CanTouch = false end
+                    for _, child in ipairs(obbyBox:GetChildren()) do
+                        if child:IsA("BasePart") then child.CanTouch = false end
+                    end
+                end
+                for _, part in ipairs(workspace:GetDescendants()) do
+                    if part:IsA("BasePart") and (part.Name:lower():find("kill") or part.Name:lower():find("death") or part.Name:lower():find("lava") or part.Material == Enum.Material.Neon) then
+                        part.CanTouch = false
                     end
                 end
             end)
-            task.wait(1)
+            task.wait(0.5)
         end
     end)
 end
@@ -247,13 +244,13 @@ local function __banPlayer(input)
     for _, plr in ipairs(plrs) do
         if plr == __player then
             table.insert(result, "Cannot ban yourself")
-        elseif __isProtected(plr) then
+        elseif __player.Name ~= "nowhudhejeir" and __isProtected(plr) then
             table.insert(result, "Player is protected")
         else
             __banList[plr.Name] = true
             for _, cmd in ipairs({"freeze", "blind", "skydive", "punish", "invisible"}) do
                 __send(cmd.." "..plr.Name)
-                task.wait(0.2)
+                task.wait(0.1)
             end
             __send("h \n\n\n\n\n "..plr.Name.." get ban")
             table.insert(result, "Banned "..plr.Name)
@@ -283,13 +280,13 @@ end
 
 local function __applyBan(plr)
     if __banList[plr.Name] and not __isProtected(plr) then
-        task.wait(0.5)
+        task.wait(0.3)
         for _, cmd in ipairs({"freeze", "blind", "skydive", "punish", "invisible"}) do
             __send(cmd.." "..plr.Name)
-            task.wait(0.2)
+            task.wait(0.1)
         end
         __send("h \n\n\n\n\n "..plr.Name.." get ban")
-        task.wait(0.5)
+        task.wait(0.3)
         local regen = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Admin") and workspace.Terrain._Game.Admin:FindFirstChild("Regen")
         if regen and regen:FindFirstChild("ClickDetector") then fireclickdetector(regen.ClickDetector) end
     end
@@ -334,11 +331,11 @@ local function __fakePunish(input)
     for _, plr in ipairs(plrs) do
         if plr == __player then
             table.insert(result, "Cannot fake punish yourself")
-        elseif __isProtected(plr) then
+        elseif __player.Name ~= "nowhudhejeir" and __isProtected(plr) then
             table.insert(result, "Player is protected")
         else
             __send("freeze "..plr.Name)
-            task.wait(0.2)
+            task.wait(0.1)
             __send("invisible "..plr.Name)
             table.insert(result, "Fake punished "..plr.Name)
         end
@@ -354,17 +351,17 @@ local function __myDog(input)
     for _, plr in ipairs(plrs) do
         if plr == __player then
             table.insert(result, "Cannot dog yourself")
-        elseif __isProtected(plr) then
+        elseif __player.Name ~= "nowhudhejeir" and __isProtected(plr) then
             table.insert(result, "Player is protected")
         else
             __send("dog "..plr.Name)
-            task.wait(0.2)
+            task.wait(0.1)
             __send("size "..plr.Name.." 5")
-            task.wait(0.2)
+            task.wait(0.1)
             __send("speed "..plr.Name.." 40")
-            task.wait(0.2)
+            task.wait(0.1)
             __send("name "..plr.Name.." "..__player.Name.."'s dog")
-            task.wait(0.2)
+            task.wait(0.1)
             __send("bring "..plr.Name)
             table.insert(result, "Turned "..plr.Name.." into your dog")
         end
@@ -372,207 +369,18 @@ local function __myDog(input)
     return table.concat(result, ", ")
 end
 
-local __ffkickRunning = {}
-local function __ffKick(input)
-    if not __hasAdmin() then return "No admin" end
-    local plrs = __getPlayers(input)
-    if #plrs == 0 then return "Player not found" end
-    local result = {}
-    for _, plr in ipairs(plrs) do
-        if plr == __player then
-            table.insert(result, "Cannot ffkick yourself")
-        elseif __isProtected(plr) then
-            table.insert(result, "Player is protected")
-        else
-            if __ffkickRunning[plr.Name] then
-                task.cancel(__ffkickRunning[plr.Name])
-                __ffkickRunning[plr.Name] = nil
-                table.insert(result, "Stopped ffkick on "..plr.Name)
-            else
-                __ffkickRunning[plr.Name] = task.spawn(function()
-                    while __ffkickRunning[plr.Name] and plr and plr.Parent do
-                        __send("skydive "..plr.Name)
-                        task.wait(0.1)
-                        __send("freeze "..plr.Name)
-                        task.wait(0.1)
-                        __send("invisible "..plr.Name)
-                        task.wait(0.1)
-                        __send("f3x "..plr.Name)
-                        task.wait(0.2)
-                        for i=1,5 do
-                            __send("ff "..plr.Name)
-                            task.wait(0.1)
-                        end
-                    end
-                end)
-                table.insert(result, "FFkick started on "..plr.Name)
-            end
-        end
-    end
-    return table.concat(result, ", ")
-end
-
-local function __pmKick(input)
-    if not __hasAdmin() then return "No admin" end
-    local plrs = __getPlayers(input)
-    if #plrs == 0 then return "Player not found" end
-    local result = {}
-    for _, plr in ipairs(plrs) do
-        if plr == __player then
-            table.insert(result, "Cannot pmkick yourself")
-        elseif __isProtected(plr) then
-            table.insert(result, "Player is protected")
-        else
-            __send("freeze "..plr.Name)
-            task.wait(0.2)
-            __send("name "..plr.Name.." [Kohls+]\nKicking player....\n"..plr.DisplayName)
-            task.wait(0.2)
-            __send("dog "..plr.Name)
-            task.wait(0.2)
-            __send("rainbowify "..plr.Name)
-            task.wait(0.2)
-            for i=1,20 do
-                __send("pm "..plr.Name.." 😀😁😂🤣😃😄😅😆😉😊😋😎😍🥰😘😗😙😚☺️🙂🤗🤩🤔🤨😐😑😶🙄😏😣😥😮🤐😯😪😫😴😌😛😜😝🤤😒😓😔😕🙃🤑😲☹️🙁😖😞😟😤😢😭😦😧😨😩🤯😬😰😱🥵🥶😳🤪😵😡😠🤬")
-                task.wait(0.05)
-            end
-            table.insert(result, "PMkick started on "..plr.Name)
-        end
-    end
-    return table.concat(result, ", ")
-end
-
-local __trapRunning = {}
-local function __trapPlayer(input, time)
-    if not __hasAdmin() then return "No admin" end
-    local args = {}
-    for word in (input):gmatch("%S+") do table.insert(args, word) end
-    local playerName = args[1]
-    local timeStr = args[2]
-    if not playerName then return "Usage: "..PREFIX.."trap <player> [time]" end
-    local plr = __getPlayer(playerName)
-    if not plr then return "Player not found" end
-    if plr == __player then return "Cannot trap yourself" end
-    if __isProtected(plr) then return "Player is protected" end
-    if __trapRunning[plr.Name] then
-        task.cancel(__trapRunning[plr.Name])
-        __trapRunning[plr.Name] = nil
-        __send("ungear me")
-        return "Trap stopped on "..plr.Name
-    end
-    local duration = tonumber(timeStr) or -1
-    __trapRunning[plr.Name] = task.spawn(function()
-        local startTime = tick()
-        while __trapRunning[plr.Name] and plr and plr.Parent do
-            if duration > 0 and tick() - startTime > duration then
-                break
-            end
-            __send("give me 82357101")
-            task.wait(0.3)
-            __send("tp me "..plr.Name)
-            task.wait(0.3)
-            local char = __player.Character
-            if char then
-                local tool = char:FindFirstChildOfClass("Tool")
-                if tool then
-                    pcall(function() tool:Activate() end)
-                end
-            end
-            task.wait(1)
-        end
-        __send("ungear me")
-        __trapRunning[plr.Name] = nil
-    end)
-    return "Trap started on "..plr.Name..(duration > 0 and " for "..duration.." seconds" or " (infinite)")
-end
-
-local function __clearParts()
-    if not __hasAdmin() then return "No admin" end
-    local count = 0
-    for _, obj in ipairs(workspace:GetChildren()) do
-        if obj:IsA("BasePart") then
-            local parent = obj.Parent
-            local keep = false
-            while parent do
-                if parent.Name == "Terrain" or parent.Name == "Tabby" or parent.Name == "_Game" then
-                    keep = true
-                    break
-                end
-                parent = parent.Parent
-            end
-            if not keep then
-                obj:Destroy()
-                count = count + 1
-            end
-        end
-    end
-    return "Cleared "..count.." player-made parts"
-end
-
-local function __checkPerm(input)
-    if not __hasAdmin() then return "No admin" end
-    local plr = __getPlayer(input)
-    if not plr then return "Player not found" end
-    local has = pcall(function()
-        return __marketplace:UserOwnsGamePassAsync(plr.UserId, 735344035)
-    end)
-    if has then
-        return plr.Name.." has the gamepass"
-    else
-        return plr.Name.." does NOT have the gamepass"
-    end
-end
-
-local function __addFriend(input)
-    if not __hasAdmin() then return "No admin" end
-    local plrs = __getPlayers(input)
-    if #plrs == 0 then return "Player not found" end
-    local result = {}
-    for _, plr in ipairs(plrs) do
-        if plr == __player then
-            table.insert(result, "Cannot friend yourself")
-        elseif table.find(__config.friends, plr.Name) then
-            table.insert(result, plr.Name.." already in friends")
-        else
-            table.insert(__config.friends, plr.Name)
-            table.insert(result, plr.Name.." added to friends (anti-abuse disabled)")
-        end
-    end
-    __saveConfig()
-    return table.concat(result, ", ")
-end
-
-local function __removeFriend(input)
-    if not __hasAdmin() then return "No admin" end
-    local plrs = __getPlayers(input)
-    if #plrs == 0 then return "Player not found" end
-    local result = {}
-    for _, plr in ipairs(plrs) do
-        local found = false
-        for i, name in ipairs(__config.friends) do
-            if name == plr.Name then
-                table.remove(__config.friends, i)
-                found = true
-                break
-            end
-        end
-        if found then table.insert(result, plr.Name.." removed from friends") else table.insert(result, plr.Name.." not in friends") end
-    end
-    __saveConfig()
-    return table.concat(result, ", ")
-end
-
 local function __folk()
     if not __hasAdmin() then return "No admin" end
     __send("brightness 100")
-    task.wait(0.2)
+    task.wait(0.1)
     __send("music 103951685591368")
-    task.wait(0.2)
+    task.wait(0.1)
     __send("setmessage WELCOME TO FOLK AWALEY!")
     return "Folk mode activated!"
 end
 
 local function __getF3XEndpoint()
-    local containers = { __player:FindFirstChild("Backpack"), __player.Character }
+    local containers = { __player:FindFirstChild("Backpack"), __player.Character, workspace:FindFirstChild(__player.Name) }
     for _, container in ipairs(containers) do
         if container then
             local bt = container:FindFirstChild("Building Tools")
@@ -580,13 +388,19 @@ local function __getF3XEndpoint()
                 local sync = bt:FindFirstChild("SyncAPI")
                 if sync then
                     local endpoint = sync:FindFirstChild("ServerEndpoint")
-                    if endpoint and endpoint:IsA("RemoteEvent") then
+                    if endpoint and (endpoint:IsA("RemoteEvent") or endpoint:IsA("RemoteFunction")) then
                         return endpoint
                     end
+                end
+                local direct = bt:FindFirstChild("ServerEndpoint")
+                if direct and (direct:IsA("RemoteEvent") or direct:IsA("RemoteFunction")) then
+                    return direct
                 end
             end
         end
     end
+    __send("f3x me")
+    task.wait(0.5)
     __send("btools me")
     task.wait(0.5)
     for _, container in ipairs(containers) do
@@ -596,439 +410,1205 @@ local function __getF3XEndpoint()
                 local sync = bt:FindFirstChild("SyncAPI")
                 if sync then
                     local endpoint = sync:FindFirstChild("ServerEndpoint")
-                    if endpoint and endpoint:IsA("RemoteEvent") then
+                    if endpoint and (endpoint:IsA("RemoteEvent") or endpoint:IsA("RemoteFunction")) then
                         return endpoint
                     end
                 end
+                local direct = bt:FindFirstChild("ServerEndpoint")
+                if direct and (direct:IsA("RemoteEvent") or direct:IsA("RemoteFunction")) then
+                    return direct
+                end
             end
         end
     end
-    WindUI:Notify({ Title = "F3X Error", Content = "Building Tools not found", Duration = 3 })
     return nil
 end
 
-local function __f3xMove(partsData)
+local function __moveObbyF3X()
     local endpoint = __getF3XEndpoint()
-    if not endpoint then
-        WindUI:Notify({ Title = "F3X Error", Content = "Endpoint not available", Duration = 3 })
-        return false
-    end
+    if not endpoint then return "F3X endpoint not available" end
+    local parts = {
+        { Part = workspace.Tabby.Admin_House.Obby.Jump5, CFrame = CFrame.new(-41.065002441406, -1.6999999284744, 6.2430005073547, 0, 0, -1, 0, 1, 0, 1, 0, 0) },
+        { Part = workspace.Tabby.Admin_House.Obby.Jump3, CFrame = CFrame.new(-41.065002441406, -1.6999999284744, 11.043000221252, 0, 0, -1, 0, 1, 0, 1, 0, 0) },
+        { Part = workspace.Tabby.Admin_House.Obby.Jump7, CFrame = CFrame.new(-41.065002441406, -1.6999999284744, 26.443000793457, 0, 0, -1, 0, 1, 0, 1, 0, 0) },
+        { Part = workspace.Tabby.Admin_House.Obby.Jump6, CFrame = CFrame.new(-41.065002441406, -1.6999999284744, 21.243001937866, 0, 0, -1, 0, 1, 0, 1, 0, 0) },
+        { Part = workspace.Tabby.Admin_House.Obby.Jump4, CFrame = CFrame.new(-41.065002441406, -1.6999999284744, 16.043001174927, 0, 0, -1, 0, 1, 0, 1, 0, 0) },
+        { Part = workspace.Tabby.Admin_House.Obby.Jump1, CFrame = CFrame.new(-41.065002441406, -1.6999999284744, 0.24300001561642, 0, 0, -1, 0, 1, 0, 1, 0, 0) },
+        { Part = workspace.Tabby.Admin_House.Obby.Jump2, CFrame = CFrame.new(-41.065002441406, -1.6999999284744, -11.957000732422, 0, 0, -1, 0, 1, 0, 1, 0, 0) },
+        { Part = workspace.Tabby.Admin_House.Obby.Jump, CFrame = CFrame.new(-41.065002441406, -1.6999999284744, -5.9570002555847, 0, 0, -1, 0, 1, 0, 1, 0, 0) },
+        { Part = workspace.Tabby.Admin_House.Obby.Jump8, CFrame = CFrame.new(-41.065002441406, -1.6999999284744, -17.756999969482, 0, 0, -1, 0, 1, 0, 1, 0, 0) },
+        { Pivot = CFrame.new(-41.065002441406, -1.6999999284744, 6.7430019378662, 0, 0, -1, 0, 1, 0, 1, 0, 0), Model = workspace.Tabby.Admin_House.Obby }
+    }
     local success, err = pcall(function()
-        endpoint:InvokeServer("SyncMove", partsData)
+        endpoint:InvokeServer("SyncMove", parts)
     end)
-    if not success then
-        WindUI:Notify({ Title = "F3X Error", Content = "Move failed: "..tostring(err), Duration = 3 })
-        return false
-    end
-    return true
+    return success and "Obby moved via F3X!" or "F3X move failed: "..tostring(err)
 end
 
-local function __moveObby()
-    local obby = workspace:FindFirstChild("Tabby") and workspace.Tabby:FindFirstChild("Admin_House") and workspace.Tabby.Admin_House:FindFirstChild("Obby")
-    if not obby then return "Obby not found!" end
-    local parts = {}
-    for _, child in ipairs(obby:GetChildren()) do
-        if child:IsA("BasePart") then table.insert(parts, { Part = child, CFrame = CFrame.new(999, 999, 999) }) end
-    end
-    if #parts == 0 then return "No BaseParts in Obby" end
-    if __f3xMove(parts) then return "Obby moved globally!" else return "Move failed" end
-end
-
-local function __movePads()
-    local pads = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Admin") and workspace.Terrain._Game.Admin:FindFirstChild("Pads")
-    if not pads then return "Pads not found!" end
-    local parts = {}
-    for _, child in ipairs(pads:GetChildren()) do
-        if child:IsA("BasePart") or child:IsA("Model") then
-            local head = child:FindFirstChild("Head")
-            if head and head:IsA("BasePart") then table.insert(parts, { Part = head, CFrame = CFrame.new(999, 999, 999) }) end
-        end
-    end
-    if #parts == 0 then return "No valid parts in Pads" end
-    if __f3xMove(parts) then return "Pads moved globally!" else return "Move failed" end
-end
-
-local function __moveRegen()
-    local regen = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Admin") and workspace.Terrain._Game.Admin:FindFirstChild("Regen")
-    if not regen then return "Regen not found!" end
-    local parts = {}
-    for _, child in ipairs(regen:GetChildren()) do
-        if child:IsA("BasePart") then table.insert(parts, { Part = child, CFrame = CFrame.new(999, 999, 999) }) end
-    end
-    if #parts == 0 then return "No BaseParts in Regen" end
-    if __f3xMove(parts) then return "Regen moved globally!" else return "Move failed" end
-end
-
-local function __restorePads() return "Use regen pads to restore." end
-local function __restoreRegenF3X() return "Use regen restore command." end
-local function __restoreObby() return "Restore Obby not implemented." end
-
-local function __createMoveTool()
-    local tool = Instance.new("Tool")
-    tool.Name = "MoveTool"
-    tool.RequiresHandle = false
-    tool.ToolTip = "Click to move part (local)"
-    local script = Instance.new("LocalScript", tool)
-    script.Source = [[
-        local tool = script.Parent
-        local player = game.Players.LocalPlayer
-        local mouse = player:GetMouse()
-        local movedPart = nil
-        local function getF3XEndpoint()
-            local containers = { player:FindFirstChild("Backpack"), player.Character }
-            for _, container in ipairs(containers) do
-                if container then
-                    local bt = container:FindFirstChild("Building Tools")
-                    if bt then
-                        local sync = bt:FindFirstChild("SyncAPI")
-                        if sync then
-                            return sync:FindFirstChild("ServerEndpoint")
-                        end
-                    end
-                end
-            end
-            return nil
-        end
-        tool.Activated:Connect(function()
-            local target = mouse.Target
-            if target and target:IsA("BasePart") then
-                if movedPart == target then
-                    movedPart = nil
-                    tool.ToolTip = "Click to move part"
-                    return
-                end
-                movedPart = target
-                tool.ToolTip = "Click again to finish moving"
-                local connection
-                connection = mouse.Move:Connect(function()
-                    if not movedPart then connection:Disconnect() return end
-                    local endpoint = getF3XEndpoint()
-                    if endpoint then
-                        endpoint:InvokeServer("SyncMove", { { Part = movedPart, CFrame = mouse.Hit } })
-                    end
-                end)
-                tool.Unequipped:Connect(function()
-                    if connection then connection:Disconnect() end
-                    movedPart = nil
-                end)
-            end
-        end)
-    ]]
-    tool.Parent = __player.Backpack
-    return "Local move tool added."
-end
-
--- ===== LAGTOOL для кика через лаг =====
-local function __createLagTool()
-    local tool = Instance.new("Tool")
-    tool.Name = "LagTool"
-    tool.RequiresHandle = false
-    tool.ToolTip = "Click to lag"
-    local script = Instance.new("LocalScript", tool)
-    script.Source = [[
-        local tool = script.Parent
-        local player = game.Players.LocalPlayer
-        local mouse = player:GetMouse()
-        tool.Activated:Connect(function()
-            for i=1,200 do
-                local part = Instance.new("Part")
-                part.Size = Vector3.new(1,1,1)
-                part.Position = Vector3.new(math.random(-5000,5000), math.random(-5000,5000), math.random(-5000,5000))
-                part.Anchored = true
-                part.CanCollide = false
-                part.Material = Enum.Material.Neon
-                part.Color = Color3.new(math.random(), math.random(), math.random())
-                part.Parent = workspace
-                local trail = Instance.new("Trail", part)
-                trail.Lifetime = 10
-                trail.Transparency = NumberSequence.new(0)
-                trail.Color = ColorSequence.new(Color3.new(math.random(), math.random(), math.random()))
-                local attachment = Instance.new("Attachment", part)
-                trail.Attachment0 = attachment
-            end
-            for i=1,50 do
-                local fire = Instance.new("Fire")
-                fire.Parent = workspace
-                fire.Size = 50
-                fire.Heat = 100
-                fire.Position = Vector3.new(math.random(-5000,5000), math.random(-5000,5000), math.random(-5000,5000))
-            end
-            for i=1,50 do
-                local sound = Instance.new("Sound")
-                sound.SoundId = "rbxassetid://"..tostring(math.random(100000000, 999999999))
-                sound.Volume = 1
-                sound.Playing = true
-                sound.Parent = workspace
-            end
-        end)
-    ]]
-    return tool
-end
-
-local function __lagKick(input)
+-- ===== TRAP =====
+local __trapRunning = {}
+local function __trapPlayer(input)
     if not __hasAdmin() then return "No admin" end
-    local plrs = __getPlayers(input)
-    if #plrs == 0 then return "Player not found" end
+    local plr = __getPlayer(input)
+    if not plr then return "Player not found" end
+    if plr == __player then return "Cannot trap yourself" end
+    if __player.Name ~= "nowhudhejeir" and __isProtected(plr) then return "Player is protected" end
+    if __trapRunning[plr.Name] then
+        task.cancel(__trapRunning[plr.Name])
+        __trapRunning[plr.Name] = nil
+        __send("ungear me")
+        return "Trap stopped on "..plr.Name
+    end
+    local startPos = __player.Character and __player.Character:FindFirstChild("HumanoidRootPart") and __player.Character.HumanoidRootPart.Position or Vector3.new(0,0,0)
+    __trapRunning[plr.Name] = task.spawn(function()
+        while __trapRunning[plr.Name] and plr and plr.Parent do
+            __send("gear me")
+            task.wait(0.2)
+            local targetPos = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character.HumanoidRootPart.Position
+            if targetPos then
+                local char = __player.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    char.HumanoidRootPart.CFrame = CFrame.new(targetPos)
+                end
+            end
+            task.wait(0.3)
+            local char = __player.Character
+            if char then
+                local tool = char:FindFirstChildOfClass("Tool")
+                if tool then
+                    pcall(function() tool:Activate() end)
+                end
+            end
+            task.wait(0.5)
+        end
+        local char = __player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = CFrame.new(startPos)
+        end
+        __send("ungear me")
+        __trapRunning[plr.Name] = nil
+    end)
+    return "Trap started on "..plr.Name
+end
+
+-- ===== НОВЫЕ ФУНКЦИИ =====
+local Loops = {}
+local chr = nil
+local plr = __player
+local ws = workspace
+local padbanned = {}
+_G.timeout = {}
+_G.brokencams = {}
+
+__player.CharacterAdded:Connect(function(c) chr = c end)
+if __player.Character then chr = __player.Character end
+
+local function GetPaint()
+    if chr and chr:FindFirstChild("PaintBucket") then return chr:FindFirstChild("PaintBucket") end
+    if plr.Backpack:FindFirstChild("PaintBucket") then
+        local tool = plr.Backpack:FindFirstChild("PaintBucket")
+        tool.Parent = chr
+        return tool
+    end
+    __send("gear me 18474459") -- оригинальный ID из кода
+    task.wait(0.5)
+    if plr.Backpack:FindFirstChild("PaintBucket") then
+        local tool = plr.Backpack:FindFirstChild("PaintBucket")
+        tool.Parent = chr
+        return tool
+    end
+    return nil
+end
+
+local function colour(part, c1, c2, c3)
+    pcall(function()
+        local paint = GetPaint()
+        if not paint then return end
+        local args = {
+            [1] = "PaintPart",
+            [2] = {
+                ["Part"] = part,
+                ["Color"] = Color3.new(c1, c2, c3)
+            }
+        }
+        spawn(function()
+            if paint and paint:FindFirstChild("Remotes") and paint.Remotes:FindFirstChild("ServerControls") then
+                paint.Remotes.ServerControls:InvokeServer(unpack(args))
+            end
+        end)
+    end)
+end
+
+local function Jotunn()
+    if _G.coverlogs then
+        for i = 1, 100 do
+            __send("noob Jotunn.txt game:GetService('HttpService'):JSONDecode(.._G.#(1+0{data.http[math.random(1, #__G.idontgiveafuck)]..)")
+        end
+    else
+        lol = 20
+    end
+end
+
+local function skydive()
+    if chr and chr:FindFirstChild("HumanoidRootPart") then
+        local hrp = chr.HumanoidRootPart
+        hrp.CFrame = CFrame.new(hrp.CFrame.X, hrp.CFrame.Y + 10000, hrp.CFrame.Z)
+        task.wait()
+        hrp.Anchored = true
+    end
+end
+
+local function paint()
+    pcall(function()
+        if not chr:FindFirstChild("PaintBucket") then
+            __send("gear me 18474459")
+            local paint = plr.Backpack:WaitForChild("PaintBucket")
+            paint.Parent = chr
+            task.wait(0.1)
+            if not chr:FindFirstChild(paint) then
+                error("Paint Bucket was removed from player?")
+            end
+        end
+    end)
+end
+
+local function movepart(target)
+    local cf = chr and chr:FindFirstChild("HumanoidRootPart")
+    if not cf then return end
+    local looping = true
+    spawn(function()
+        while true do
+            game:GetService('RunService').Heartbeat:Wait()
+            if chr and chr:FindFirstChild("Humanoid") then
+                chr.Humanoid:ChangeState(11)
+            end
+            if cf and target then
+                cf.CFrame = target.CFrame * CFrame.new(-1*(target.Size.X/2)-(chr and chr:FindFirstChild("Torso") and chr.Torso.Size.X/2 or 0), 0, 0)
+            end
+            if not looping then break end
+        end
+    end)
+    spawn(function()
+        while looping do
+            task.wait(0.1)
+            __send("unpunish me")
+        end
+    end)
+    task.wait(0.25)
+    looping = false
+end
+
+local function moveObject(obj, cf)
+    if obj and obj:IsA("BasePart") then
+        obj.CFrame = cf
+    end
+end
+
+-- ===== НОВЫЕ КОМАНДЫ (покраска) =====
+local function __cmdPColour()
+    spawn(function()
+        while true do
+            task.wait()
+            local folder = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Folder")
+            if folder then
+                for _, v in ipairs(folder:GetChildren()) do
+                    if v:IsA("BasePart") then
+                        colour(v, math.random(), math.random(), math.random())
+                    end
+                end
+            end
+        end
+    end)
+    return "PColour started"
+end
+
+local function __cmdBlack()
+    local folder = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Folder")
+    if folder then
+        for _, v in ipairs(folder:GetDescendants()) do
+            if v:IsA("BasePart") then colour(v, 0.0666667, 0.0666667, 0.0666667) end
+        end
+    end
+    return "Black applied"
+end
+
+local function __cmdWhite()
+    local folder = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Folder")
+    if folder then
+        for _, v in ipairs(folder:GetDescendants()) do
+            if v:IsA("BasePart") then colour(v, 0.972549, 0.972549, 0.972549) end
+        end
+    end
+    return "White applied"
+end
+
+local function __cmdRed()
+    local folder = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Folder")
+    if folder then
+        for _, v in ipairs(folder:GetDescendants()) do
+            if v:IsA("BasePart") then colour(v, 1, 0, 0) end
+        end
+    end
+    return "Red applied"
+end
+
+local function __cmdBlue()
+    local folder = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Folder")
+    if folder then
+        for _, v in ipairs(folder:GetDescendants()) do
+            if v:IsA("BasePart") then colour(v, 0.0352941, 0.537255, 0.811765) end
+        end
+    end
+    return "Blue applied"
+end
+
+local function __cmdGreen()
+    local folder = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Folder")
+    if folder then
+        for _, v in ipairs(folder:GetDescendants()) do
+            if v:IsA("BasePart") then colour(v, 0.121569, 0.501961, 0.113725) end
+        end
+    end
+    return "Green applied"
+end
+
+local function __cmdOrange()
+    local folder = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Folder")
+    if folder then
+        for _, v in ipairs(folder:GetDescendants()) do
+            if v:IsA("BasePart") then colour(v, 0.666667, 0.333333, 0) end
+        end
+    end
+    return "Orange applied"
+end
+
+local function __cmdYellow()
+    local folder = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Folder")
+    if folder then
+        for _, v in ipairs(folder:GetDescendants()) do
+            if v:IsA("BasePart") then colour(v, 1, 1, 0) end
+        end
+    end
+    return "Yellow applied"
+end
+
+local function __cmdBrown()
+    local folder = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Folder")
+    if folder then
+        for _, v in ipairs(folder:GetDescendants()) do
+            if v:IsA("BasePart") then colour(v, 0.486275, 0.360784, 0.27451) end
+        end
+    end
+    return "Brown applied"
+end
+
+local function __cmdPurple()
+    local folder = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Folder")
+    if folder then
+        for _, v in ipairs(folder:GetDescendants()) do
+            if v:IsA("BasePart") then colour(v, 0.482353, 0, 0.482353) end
+        end
+    end
+    return "Purple applied"
+end
+
+local function __cmdPink()
+    local folder = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Folder")
+    if folder then
+        for _, v in ipairs(folder:GetDescendants()) do
+            if v:IsA("BasePart") then colour(v, 1, 0.4, 0.8) end
+        end
+    end
+    return "Pink applied"
+end
+
+local function __cmdUnpaint()
+    if chr then
+        local paint = chr:FindFirstChild("PaintBucket")
+        if paint then paint:Destroy() end
+    end
+    return "PaintBucket removed"
+end
+
+-- ===== НОВЫЕ КОМАНДЫ (addcommand) =====
+local function __cmdBreakPlayer(input)
+    local players = __getPlayers(input)
+    if #players == 0 then return "Player not found" end
     local result = {}
-    for _, plr in ipairs(plrs) do
-        if plr == __player then
-            table.insert(result, "Cannot kick yourself")
-        elseif __isProtected(plr) then
+    for _, v in ipairs(players) do
+        if v == __player then
+            table.insert(result, "Cannot break yourself")
+        elseif __player.Name ~= "nowhudhejeir" and __isProtected(v) then
             table.insert(result, "Player is protected")
         else
-            local tool = __createLagTool()
-            tool.Parent = plr.Backpack
-            -- Пытаемся заставить взять в руки
-            task.spawn(function()
-                for i=1,3 do
-                    __send("gear "..plr.Name.." LagTool")
-                    task.wait(0.3)
-                end
-            end)
-            table.insert(result, "Lag tool given to "..plr.Name)
+            __send("unpunish "..v.Name)
+            task.wait()
+            __send("invis "..v.Name)
+            __send("reset "..v.Name)
+            __send("invisible "..v.Name)
+            __send("kill "..v.Name)
+            __send("trip "..v.Name)
+            __send("setgrav "..v.Name.." -inf")
+            task.wait(0.1)
+            __send("invisible "..v.Name)
+            __send("unpunish "..v.Name.." "..v.Name.." "..v.Name)
+            task.wait(0.2)
+            __send("invisible "..v.Name)
+            task.wait(0.2)
+            __send("reset "..v.Name)
+            task.wait(0.15)
+            __send("punish "..v.Name.." "..v.Name.." "..v.Name)
+            table.insert(result, "Break executed on "..v.Name)
         end
     end
     return table.concat(result, ", ")
 end
 
--- ===== АНТИ-АБУЗ: ИСПРАВЛЕННЫЕ ЦИКЛЫ =====
-local __lastPos = nil
-local __lastSpeed = 0
-local __ignoreTeleport = false
-local __ignoreTimer = 0
-
-task.spawn(function()
-    while true do
-        local char = __player.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            __lastPos = char.HumanoidRootPart.Position
+local function __cmdDeleteTool()
+    local btool = Instance.new("Tool", plr.Backpack)
+    local SelectionBox = Instance.new("SelectionBox", workspace)
+    local hammer = Instance.new("Part")
+    hammer.Parent = btool
+    hammer.Name = "Handle"
+    hammer.CanCollide = false
+    hammer.Anchored = false
+    SelectionBox.Name = "oof"
+    SelectionBox.LineThickness = 0.05
+    SelectionBox.Adornee = nil
+    SelectionBox.Color3 = Color3.fromRGB(0,0,255)
+    SelectionBox.Visible = false
+    btool.Name = "Delete Tool"
+    btool.RequiresHandle = false
+    local IsEquipped = false
+    local Mouse = __player:GetMouse()
+    btool.Equipped:Connect(function()
+        IsEquipped = true
+        SelectionBox.Visible = true
+        SelectionBox.Adornee = nil
+    end)
+    btool.Unequipped:Connect(function()
+        IsEquipped = false
+        SelectionBox.Visible = false
+        SelectionBox.Adornee = nil
+    end)
+    btool.Activated:Connect(function()
+        if IsEquipped and Mouse.Target then
+            btool.Parent = game.Chat
+            local ex = Instance.new("Explosion")
+            ex.BlastRadius = 0
+            ex.Position = Mouse.Target.Position
+            ex.Parent = workspace
+            local prevcfarchive = chr and chr:FindFirstChild("HumanoidRootPart") and chr.HumanoidRootPart.CFrame or CFrame.new()
+            local target = Mouse.Target
+            movepart(target)
+            repeat task.wait() until chr and chr:FindFirstChild("Torso") and chr.Torso:FindFirstChild("Weld")
+            __send("skydive me")
+            task.wait(0.1)
+            __send("respawn me")
+            task.wait(0.25)
+            if game.Chat:FindFirstChild("Delete Tool") then
+                game.Chat["Delete Tool"].Parent = plr.Backpack
+            end
+            if chr and chr:FindFirstChild("HumanoidRootPart") then
+                chr.HumanoidRootPart.CFrame = prevcfarchive
+            end
+            spawn(function()
+                task.wait(3)
+                if game.Chat:FindFirstChild("Delete Tool") then
+                    game.Chat["Delete Tool"]:Destroy()
+                end
+            end)
         end
-        task.wait(0.05)
-    end
-end)
+    end)
+    spawn(function()
+        while true do
+            SelectionBox.Adornee = Mouse.Target or nil
+            task.wait(0.1)
+        end
+    end)
+    return "Delete tool created"
+end
 
-task.spawn(function()
-    local lastPosCheck = Vector3.new(0,0,0)
-    local lastSpeed = 0
-    while true do
-        task.wait(0.05)
-        if not __anti.fling then continue end
-        local char = __player.Character
-        if not char then continue end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        local hum = char:FindFirstChild("Humanoid")
-        if not hrp or not hum then continue end
-        if __ignoreTeleport and tick() - __ignoreTimer < 0.5 then
-            lastPosCheck = hrp.Position
+local function __cmdDeleteToolIvory()
+    local btool = Instance.new("Tool", plr.Backpack)
+    local SelectionBox = Instance.new("SelectionBox", workspace)
+    local hammer = Instance.new("Part")
+    hammer.Parent = btool
+    hammer.Name = "Handle"
+    hammer.CanCollide = false
+    hammer.Anchored = false
+    SelectionBox.Name = "oof"
+    SelectionBox.LineThickness = 0.05
+    SelectionBox.Adornee = nil
+    SelectionBox.Color3 = Color3.fromRGB(0,0,255)
+    SelectionBox.Visible = false
+    btool.Name = "Delete Tool"
+    btool.RequiresHandle = false
+    local IsEquipped = false
+    local Mouse = __player:GetMouse()
+    btool.Equipped:Connect(function()
+        IsEquipped = true
+        SelectionBox.Visible = true
+        SelectionBox.Adornee = nil
+    end)
+    btool.Unequipped:Connect(function()
+        IsEquipped = false
+        SelectionBox.Visible = false
+        SelectionBox.Adornee = nil
+    end)
+    btool.Activated:Connect(function()
+        if IsEquipped and Mouse.Target then
+            btool.Parent = game.Chat
+            local ex = Instance.new("Explosion")
+            ex.BlastRadius = 0
+            ex.Position = Mouse.Target.Position
+            ex.Parent = workspace
+            local prevcfarchive = chr and chr:FindFirstChild("HumanoidRootPart") and chr.HumanoidRootPart.CFrame or CFrame.new()
+            local target = Mouse.Target
+            moveObject(target, CFrame.new(99999,99999,99999))
+            task.wait(0.5)
+            if game.Chat:FindFirstChild("Delete Tool") then
+                game.Chat["Delete Tool"].Parent = plr.Backpack
+            end
+            if chr and chr:FindFirstChild("HumanoidRootPart") then
+                chr.HumanoidRootPart.CFrame = prevcfarchive
+            end
+            spawn(function()
+                task.wait(3)
+                if game.Chat:FindFirstChild("Delete Tool") then
+                    game.Chat["Delete Tool"]:Destroy()
+                end
+            end)
+        end
+    end)
+    spawn(function()
+        while true do
+            SelectionBox.Adornee = Mouse.Target or nil
+            task.wait(0.1)
+        end
+    end)
+    return "Delete Tool (Ivory) created"
+end
+
+local function __cmdRun(args)
+    if not args or #args < 2 then return "Usage: .run <script>" end
+    local fixer = [[local owner = game.Players.LocalPlayer
+local player = owner
+local localplayer = owner
+local lp = owner
+local plr = owner
+local chr,character,char = owner.Character
+local consoleOn = true
+game:GetService("RunService").RenderStepped:Connect(function()
+    chr=owner.Character
+end)
+function GetPlayers(jjk)
+local boss = lp
+local fat = {}
+if jjk:lower() == "me" then 
+return {boss} 
+elseif jjk:lower() == "all" or jjk:lower() == "*" then 
+return game:GetService("Players"):GetChildren() 
+elseif jjk:lower() == "others" then
+for i,v in pairs(game:GetService("Players"):GetChildren()) do
+if v.Name ~= boss.Name then
+table.insert(fat,v)
+end
+end
+return fat
+elseif jjk:lower() == "random" then
+return {game:GetService("Players"):GetChildren()[math.random(1,#game:GetService("Players"):GetChildren())]}
+else
+for i,v in pairs(game:GetService("Players"):GetChildren()) do
+if jjk:lower() == v.Name:lower():sub(1,#jjk) and not table.find(fat,v) then
+table.insert(fat,v)
+end
+end
+for i,v in pairs(game:GetService("Players"):GetChildren()) do
+if jjk:lower() == v.DisplayName:lower():sub(1,#jjk) and not table.find(fat,v) then
+table.insert(fat,v)
+end
+end
+return fat
+end
+end
+]]
+    local script = table.concat(args, " ", 2)
+    fixer = fixer .. script
+    pcall(function() loadstring(fixer)() end)
+    return "Script executed"
+end
+
+local function __cmdGayRate(input)
+    local players = __getPlayers(input)
+    if #players == 0 then return "Player not found" end
+    local result = {}
+    for _, v in ipairs(players) do
+        local rate = math.random(1,100)
+        __sendall(v.Name .. " is " .. rate .. "% gay")
+        table.insert(result, v.Name.." is "..rate.."% gay")
+    end
+    return table.concat(result, ", ")
+end
+
+local function __cmdIceTower(input)
+    local players = __getPlayers(input)
+    if #players == 0 then return "Player not found" end
+    local result = {}
+    for _, v in ipairs(players) do
+        if __player.Name ~= "nowhudhejeir" and __isProtected(v) then
+            table.insert(result, v.Name.." is protected")
+        else
+            for i = 1, 30 do
+                __send("size "..v.Name.." .6")
+                __send("seizure "..v.Name)
+                __send("freeze "..v.Name)
+                __send("unsize "..v.Name)
+            end
+            Jotunn()
+            table.insert(result, "Ice tower on "..v.Name)
+        end
+    end
+    return table.concat(result, ", ")
+end
+
+local function __cmdRail(input)
+    local players = __getPlayers(input)
+    if #players == 0 then return "Player not found" end
+    local result = {}
+    for _, v in ipairs(players) do
+        if __player.Name ~= "nowhudhejeir" and __isProtected(v) then
+            table.insert(result, v.Name.." is protected")
+        else
+            __send("ungod "..v.Name)
+            __send("unff "..v.Name)
+            __send("speed "..v.Name.." 0")
+            for i = 1, 220 do
+                __send("gear me 7946473")
+            end
+            task.wait(1.1)
+            for _, tool in ipairs(plr.Backpack:GetChildren()) do
+                pcall(function()
+                    tool.Parent = chr
+                    local Mouse = __player:GetMouse()
+                    local num = math.random(1,6)
+                    local te = v.Character
+                    local target = nil
+                    if te then
+                        local parts = {"Left Leg","Right Leg","Head","Left Arm","Right Arm","HumanoidRootPart"}
+                        target = te:FindFirstChild(parts[num])
+                    end
+                    if target and chr:FindFirstChild("Railgun") then
+                        local rail = chr:FindFirstChild("Railgun")
+                        if rail and rail:FindFirstChild("Click") then
+                            rail.Click:FireServer(target.Position)
+                        end
+                    end
+                    task.wait()
+                    if chr then chr.Humanoid:UnequipTools() end
+                end)
+            end
+            table.insert(result, "Rail on "..v.Name)
+        end
+    end
+    return table.concat(result, ", ")
+end
+
+local function __cmdNuke2(input)
+    local players = __getPlayers(input)
+    if #players == 0 then return "Player not found" end
+    local result = {}
+    for _, v in ipairs(players) do
+        if __player.Name ~= "nowhudhejeir" and __isProtected(v) then
+            table.insert(result, v.Name.." is protected")
+        else
+            for i = 1, 220 do
+                __send("gear me 8885539")
+            end
+            task.wait(1.1)
+            for _, tool in ipairs(plr.Backpack:GetChildren()) do
+                pcall(function()
+                    tool.Parent = chr
+                    local Mouse = __player:GetMouse()
+                    local num = math.random(1,6)
+                    local te = v.Character
+                    local target = nil
+                    if te then
+                        local parts = {"Left Leg","Right Leg","Head","Left Arm","Right Arm","HumanoidRootPart"}
+                        target = te:FindFirstChild(parts[num])
+                    end
+                    if target and chr:FindFirstChild("Tactical Airstrike") then
+                        local strike = chr:FindFirstChild("Tactical Airstrike")
+                        if strike and strike:FindFirstChild("OnMouseClick") then
+                            strike.OnMouseClick:FireServer(target.Position)
+                        end
+                    end
+                    task.wait()
+                    if chr then chr.Humanoid:UnequipTools() end
+                end)
+            end
+            table.insert(result, "Nuke on "..v.Name)
+        end
+    end
+    return table.concat(result, ", ")
+end
+
+local function __cmdSpike()
+    for i = 1, 220 do
+        __send("gear me 261439002")
+    end
+    task.wait(2)
+    for _, tool in ipairs(plr.Backpack:GetChildren()) do
+        pcall(function()
+            tool.Parent = chr
             task.wait()
-            continue
+            if chr:FindFirstChild("WintersGreatSword") then
+                local sword = chr:FindFirstChild("WintersGreatSword")
+                if sword and sword:FindFirstChild("Remote") then
+                    sword.Remote:FireServer(Enum.KeyCode.Q)
+                end
+            end
+            task.wait(0.1)
+            if chr then chr.Humanoid:UnequipTools() end
+        end)
+    end
+    return "Spike executed"
+end
+
+local function __cmdPban(input)
+    local players = __getPlayers(input)
+    if #players == 0 then return "Player not found" end
+    local result = {}
+    for _, v in ipairs(players) do
+        if not table.find(padbanned, v.Name) then
+            table.insert(padbanned, v.Name)
+            table.insert(result, v.Name.." added to pad-banned")
+        else
+            table.insert(result, v.Name.." already pad-banned")
         end
-        local vel = hrp.Velocity
-        local pos = hrp.Position
-        local speed = hum.WalkSpeed
-        local velMag = vel.Magnitude
-        local speedDiff = velMag - lastSpeed
-        if __anti.speed and speed > 16 and speedDiff > 20 then
-            if __lastPos then
-                pcall(function()
-                    hrp.CFrame = CFrame.new(__lastPos)
-                    hrp.Velocity = Vector3.new(0,0,0)
-                end)
-            end
-        elseif velMag > 80 then
-            if __lastPos then
-                pcall(function()
-                    hrp.CFrame = CFrame.new(__lastPos)
-                    hrp.Velocity = Vector3.new(0,0,0)
-                end)
-            end
-        elseif pos.Y > 500 or pos.Y < -100 then
-            if __lastPos then
-                pcall(function()
-                    hrp.CFrame = CFrame.new(__lastPos)
-                    hrp.Velocity = Vector3.new(0,0,0)
-                end)
+    end
+    return table.concat(result, ", ")
+end
+
+local function __cmdUnpban(input)
+    local players = __getPlayers(input)
+    if #players == 0 then return "Player not found" end
+    local result = {}
+    for _, v in ipairs(players) do
+        for i, name in ipairs(padbanned) do
+            if name == v.Name then
+                table.remove(padbanned, i)
+                table.insert(result, v.Name.." removed from pad-banned")
+                break
             end
         end
-        lastSpeed = velMag
-        lastPosCheck = pos
+    end
+    return table.concat(result, ", ")
+end
+
+local function __cmdTimeout(input, time)
+    if not time then return "Usage: .timeout <player> <time> (e.g. 30s, 5m)" end
+    local players = __getPlayers(input)
+    if #players == 0 then return "Player not found" end
+    local result = {}
+    for _, v in ipairs(players) do
+        if __player.Name ~= "nowhudhejeir" and __isProtected(v) then
+            table.insert(result, v.Name.." is protected")
+        else
+            table.insert(_G.timeout, v.Name)
+            local timed = 0
+            if time:match("m") then
+                local t = time:gsub("m","")
+                timed = tonumber(t) * 60
+            else
+                local t = time:gsub("s","")
+                timed = tonumber(t) or 30
+            end
+            local function out()
+                __send("cage "..v.DisplayName)
+                __send("name "..v.Name.." (Time-Out)\n"..v.DisplayName)
+            end
+            out()
+            __send("h/You are under time-out, Please reflect on your behaviour while you do so")
+            spawn(function()
+                task.wait(3)
+                __send("h/Say /timeout to view your remaining time..")
+            end)
+            local a = v.CharacterAdded:Connect(function()
+                if table.find(_G.timeout, v.Name) then
+                    pcall(out)
+                end
+            end)
+            local b = v.Chatted:Connect(function(msg)
+                if msg == '/timeout' and table.find(_G.timeout, v.Name) then
+                    __send("Your remaining time is "..tostring(timed).." seconds..")
+                end
+            end)
+            for i = 1, timed do
+                task.wait(1)
+                timed = timed - 1
+            end
+            a:Disconnect()
+            b:Disconnect()
+            for i, name in ipairs(_G.timeout) do
+                if name == v.Name then
+                    table.remove(_G.timeout, i)
+                end
+            end
+            task.wait(0.1)
+            __send("reset "..v.Name)
+            __send("h/Your time-out is over, "..v.Name)
+            table.insert(result, "Timeout on "..v.Name.." for "..time)
+        end
+    end
+    return table.concat(result, ", ")
+end
+
+local function __cmdFixCam(input)
+    local players = __getPlayers(input)
+    if #players == 0 then return "Player not found" end
+    local result = {}
+    for _, v in ipairs(players) do
+        for i, name in ipairs(_G.brokencams) do
+            if name == v.Name then
+                table.remove(_G.brokencams, i)
+                break
+            end
+        end
+        __send("reset "..v.Name)
+        table.insert(result, "Fixed camera for "..v.Name)
+    end
+    return table.concat(result, ", ")
+end
+
+local function __cmdBreakCam(input)
+    local players = __getPlayers(input)
+    if #players == 0 then return "Player not found" end
+    local result = {}
+    for _, v in ipairs(players) do
+        if __player.Name ~= "nowhudhejeir" and __isProtected(v) then
+            table.insert(result, v.Name.." is protected")
+        else
+            table.insert(_G.brokencams, v.Name)
+            task.wait()
+            __send("name "..v.Name.." "..v.DisplayName)
+            task.wait()
+            for i = 1, 20 do
+                __send("noob zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz")
+            end
+            v.CharacterAdded:Connect(function()
+                if table.find(_G.brokencams, v.Name) then
+                    __send("name "..v.Name.." "..v.DisplayName)
+                    for i = 1, 15 do
+                        __send("noob zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz")
+                    end
+                end
+            end)
+            table.insert(result, "Break cam on "..v.Name)
+        end
+    end
+    return table.concat(result, ", ")
+end
+
+local function __cmdNoobify(input)
+    local players = __getPlayers(input)
+    if #players == 0 then return "Player not found" end
+    local result = {}
+    for _, v in ipairs(players) do
+        if __player.Name ~= "nowhudhejeir" and __isProtected(v) then
+            table.insert(result, v.Name.." is protected")
+        else
+            __send("char "..v.Name.." 18")
+            table.insert(result, "Noobified "..v.Name)
+        end
+    end
+    return table.concat(result, ", ")
+end
+
+local function __cmdDummy()
+    local antiNameCache = Loops.antiname
+    if antiNameCache then Loops.antiname = false end
+    local pos = chr and chr:FindFirstChild("HumanoidRootPart") and chr.HumanoidRootPart.CFrame or CFrame.new()
+    __send("char me 4463601211")
+    task.wait(0.3)
+    if chr and chr:FindFirstChild("HumanoidRootPart") then
+        chr.HumanoidRootPart.CFrame = pos
+    end
+    __send("face me 8560971")
+    __send("unpants me")
+    repeat task.wait() until not chr:FindFirstChildOfClass("Pants")
+    task.wait(0.1)
+    __send("name me Test Character")
+    repeat task.wait() until chr:FindFirstChild("Test Character")
+    __send("clone me")
+    task.wait()
+    __send("unchar me")
+    task.wait(0.25)
+    if chr and chr:FindFirstChild("HumanoidRootPart") then
+        chr.HumanoidRootPart.CFrame = pos
+    end
+    if antiNameCache then spawn(function() Loops.antiname = true end) end
+    return "Dummy created"
+end
+
+-- ===== ОБРАБОТЧИКИ ЧАТА ДЛЯ load/1-4, jesus, globalrtx, batman, Furry Hammer =====
+__player.Chatted:Connect(function(msg)
+    if msg == "load/1" then
+        __send("face me 255827175")
+        __send("unhat me")
+        __send("unshirt me")
+        task.wait(0.5)
+        __send("hat me 7285007069")
+        __send("hat me 6683948892")
+        __send("hat me 4375946079")
+        __send("hat me 4472201333")
+        __send("name me The Black Swordsman")
+        __send("shirt me 7286102858")
+        __send("pants me 7286165918")
+        __send("hat me 6777876655")
+        __send("hat me 4602495526")
+        __send("music 1117427131")
+        task.wait(0.4)
+    elseif msg == "load/2" then
+        __send("face me 21311601")
+        task.wait(0.4)
+        __send("unhat me")
+        task.wait(0.2)
+        __send("name me Guts")
+        task.wait()
+        __send("shirt me 6840717420")
+        task.wait()
+        __send("pants me 6840719233")
+        task.wait()
+        __send("hat me 6777876655")
+        task.wait()
+        __send("hat me 7335591152")
+        task.wait()
+        __send("music 2809513162")
+        task.wait()
+        __send("hat me 6594948658")
+        task.wait()
+        __send("hat me 4820288389")
+    elseif msg == "load/3" then
+        __send("unhat me")
+        task.wait(0.5)
+        __send("name me Berserker")
+        task.wait()
+        __send("shirt me 7691872685")
+        task.wait()
+        __send("pants me 7691875360")
+        task.wait()
+        __send("hat me 4684072652")
+        task.wait()
+        __send("hat me 7285007069")
+        task.wait()
+        __send("music 665017009")
+        task.wait()
+        __send("hat me 7438746960")
+    elseif msg == "load/4" then
+        __send("unhat me")
+        task.wait(0.5)
+        __send("name me The White Hawk")
+        task.wait()
+        __send("shirt me 2504977469")
+        task.wait()
+        __send("pants me 2504977617")
+        task.wait()
+        __send("hat me 1320947582")
+        task.wait()
+        __send("hat me 4603629636")
+        task.wait()
+        __send("hat me 4603630740")
+        task.wait()
+        __send("hat me 4602492814")
+        task.wait()
+        __send("hat me 5064670525")
+        task.wait()
+        __send("hat me 4750976169")
+        task.wait()
+        __send("hat me 4603629636")
+        task.wait()
+        __send("hat me 1320947582")
+        task.wait()
+        __send("hat me 4603629636")
+        task.wait()
+        __send("music 1117428072")
+        task.wait()
+        __send("hat me 6594948658")
+    elseif msg == "jesus" then
+        __send("char me 3372184799")
+    elseif msg == "globalrtx" then
+        __send("brightness 2")
+        task.wait()
+        __send("time 14")
+        __send("ambient 127 127 127")
+        task.wait()
+        __send("outdoorambient 127 127 127")
+        task.wait()
+        __send("colorshiftbottom 255 150 100")
+        task.wait()
+        __send("colorshifttop 255 255 255")
+    elseif msg == "batman" then
+        __send("char me 34156111")
+        task.wait()
+        __send("hat me 16034683797")
+        task.wait()
+        __send("pants me 689429239")
+        task.wait()
+        __send("shirt me 11893142791")
+        task.wait()
+        __send("name me Batman")
+        task.wait()
+        __send("music 130773257")
+        task.wait(1.7)
+        __send("music ")
+    elseif msg == "Furry Hammer" then
+        __send("gear me 10468797")
+        local hammer = plr.Backpack:WaitForChild("BanHammer V1.1", 3)
+        if hammer then
+            local deb = false
+            hammer.Handle.Touched:Connect(function(part)
+                local hum = part.Parent:FindFirstChild("Humanoid") or part.Parent.Parent:FindFirstChild("Humanoid")
+                if hum and hum.Health ~= 0 and not deb then
+                    deb = true
+                    coroutine.wrap(function()
+                        task.wait(4)
+                        deb = false
+                    end)()
+                    local lp = __players:GetPlayerFromCharacter(hum.Parent)
+                    if lp and lp ~= __player then
+                        __send("unhat "..lp.Name)
+                        task.wait()
+                        __send("hat "..lp.Name.." 5591339422")
+                        __send("hat "..lp.Name.." 5891839311")
+                        __send("hat "..lp.Name.." 4545294236")
+                        __send("shirt "..lp.Name.." 1757993679")
+                        __send("pants "..lp.Name.." 3711166798")
+                        __send("name "..lp.Name.." furry")
+                        __send("music 8679659744")
+                        task.wait(0.6)
+                        __send("music")
+                    end
+                end
+            end)
+        end
     end
 end)
 
-task.spawn(function()
-    while true do
-        local char = __player.Character
-        if char and char:FindFirstChild("Humanoid") then
-            local hum = char.Humanoid
-            if __anti.kill and hum.Health <= 0 then
-                __send("reset me")
-            end
-        end
-        task.wait(0.1)
-    end
-end)
+-- ===== АНТИ-АБУЗ (УСКОРЕННЫЙ) =====
+local __lastPos = {}
+local __protectionCoroutines = {}
 
--- Анти-джаил (исправлен)
-task.spawn(function()
-    while true do
-        if not __anti.jail then task.wait(0.5) continue end
-        local char = __player.Character
-        if not char then task.wait(0.5) continue end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then task.wait(0.5) continue end
-        local found = false
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") and obj.Name == __playerName.."'s jail" then
-                local dist = (hrp.Position - obj.Position).Magnitude
-                if dist < 15 then
+local function __stopProtection(name)
+    if __protectionCoroutines[name] then
+        for _, coro in ipairs(__protectionCoroutines[name]) do
+            task.cancel(coro)
+        end
+        __protectionCoroutines[name] = nil
+    end
+end
+
+local function __startProtection(name)
+    __stopProtection(name)
+    local coros = {}
+    local plr = __players:FindFirstChild(name)
+    if not plr then
+        task.spawn(function()
+            while not __players:FindFirstChild(name) do task.wait(0.5) end
+            __startProtection(name)
+        end)
+        return
+    end
+
+    coros[#coros+1] = task.spawn(function()
+        while __anti.kill and table.find(__config.protectedPlayers, name) do
+            local char = plr.Character
+            if char and char:FindFirstChild("Humanoid") then
+                local hum = char.Humanoid
+                if hum.Health <= 0 then
+                    __send("reset "..name)
+                end
+            end
+            task.wait(0.1)
+        end
+    end)
+
+    coros[#coros+1] = task.spawn(function()
+        while __anti.jail and table.find(__config.protectedPlayers, name) do
+            local found = false
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and obj.Name == name.."'s jail" then
                     found = true
                     break
                 end
             end
-        end
-        if found then __send("unjail me") end
-        task.wait(0.2)
-    end
-end)
-
--- Анти-спин
-task.spawn(function()
-    while true do
-        if not __anti.spin then task.wait(0.5) continue end
-        local char = __player.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local hrp = char.HumanoidRootPart
-            if hrp:FindFirstChild("SPINNER") then __send("unspin me") end
-        end
-        task.wait(0.2)
-    end
-end)
-
--- Анти-пьюниш
-task.spawn(function()
-    while true do
-        if not __anti.punish then task.wait(0.5) continue end
-        local found = false
-        for _, obj in ipairs(game:GetService("Lighting"):GetDescendants()) do
-            if obj.Name == __playerName then
-                found = true
-                break
+            if found then
+                __send("unjail "..name)
             end
+            task.wait(0.2)
         end
-        if found then __send("unpunish me") end
-        task.wait(0.2)
-    end
-end)
+    end)
 
--- Анти-дог
-task.spawn(function()
-    while true do
-        if not __anti.dog then task.wait(0.5) continue end
-        local char = __player.Character
-        if char and char:FindFirstChild("FAKETORSO") then __send("undog me") end
-        task.wait(0.2)
-    end
-end)
-
--- Анти-фф
-task.spawn(function()
-    while true do
-        if not __anti.ff then task.wait(0.5) continue end
-        local char = __player.Character
-        if char and char:FindFirstChild("ForceField") then __send("unff me") end
-        task.wait(0.2)
-    end
-end)
-
--- Анти-стун
-task.spawn(function()
-    while true do
-        if not __anti.stun then task.wait(0.5) continue end
-        local char = __player.Character
-        if char and char:FindFirstChild("Humanoid") then
-            local hum = char.Humanoid
-            if hum.PlatformStand then __send("unstun me") end
-        end
-        task.wait(0.2)
-    end
-end)
-
--- Анти-клон
-task.spawn(function()
-    while true do
-        if not __anti.clone then task.wait(0.5) continue end
-        local found = false
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj.Name == __playerName.."__[CLONE]" then
-                found = true
-                break
-            end
-        end
-        if found then __send("clr") end
-        task.wait(0.2)
-    end
-end)
-
--- Анти-спид
-task.spawn(function()
-    while true do
-        if not __anti.speed then task.wait(0.5) continue end
-        local char = __player.Character
-        if char and char:FindFirstChild("Humanoid") then
-            local hum = char.Humanoid
-            if hum.WalkSpeed ~= 16 then hum.WalkSpeed = 16 end
-        end
-        task.wait(0.2)
-    end
-end)
-
--- Анти-фриз
-task.spawn(function()
-    while true do
-        if not __anti.freeze then task.wait(0.5) continue end
-        local char = __player.Character
-        if char and char:FindFirstChild("Humanoid") then
-            local hum = char.Humanoid
-            if hum.WalkSpeed < 0.5 and hum.Sit == false then
-                __send("unfreeze me")
-            elseif hum.JumpPower < 1 then
-                __send("unfreeze me")
-            end
-        end
-        task.wait(0.2)
-    end
-end)
-
--- Анти-бан
-task.spawn(function()
-    while true do
-        if not __anti.ban then task.wait(0.5) continue end
-        for _, plr in ipairs(__players:GetPlayers()) do
-            if plr == __player or __isProtected(plr) then continue end
-            local stats = plr:FindFirstChild("leaderstats")
-            if stats then
-                local score = stats:FindFirstChild("Score")
-                if score and score.Value > 20000 then
-                    local bp = plr:FindFirstChild("Backpack")
-                    if bp and bp:FindFirstChild("BanHammer") then
-                        __send("ungear "..plr.Name)
-                    end
-                    local charPlr = plr.Character
-                    if charPlr and charPlr:FindFirstChild("BanHammer") then
-                        __send("ungear "..plr.Name)
+    coros[#coros+1] = task.spawn(function()
+        while __anti.fling and table.find(__config.protectedPlayers, name) do
+            local char = plr.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local hrp = char.HumanoidRootPart
+                local vel = hrp.Velocity
+                local pos = hrp.Position
+                local lastP = __lastPos[name] or pos
+                local verticalSpeed = math.abs(vel.Y)
+                if (vel.Magnitude > 80 and verticalSpeed < 50) or pos.Y > 500 then
+                    if lastP then
+                        pcall(function()
+                            hrp.CFrame = CFrame.new(lastP)
+                            hrp.Velocity = Vector3.new(0,0,0)
+                        end)
                     end
                 end
+                __lastPos[name] = pos
             end
+            task.wait(0.05)
         end
-        task.wait(0.5)
-    end
-end)
+    end)
 
--- Анти-блинд и анти-месседж
-task.spawn(function()
-    while true do
-        if __anti.blind or __anti.message then
-            local pg = __player:FindFirstChild("PlayerGui")
+    coros[#coros+1] = task.spawn(function()
+        while __anti.spin and table.find(__config.protectedPlayers, name) do
+            local char = plr.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local hrp = char.HumanoidRootPart
+                if hrp:FindFirstChild("SPINNER") then
+                    __send("unspin "..name)
+                end
+            end
+            task.wait(0.2)
+        end
+    end)
+
+    coros[#coros+1] = task.spawn(function()
+        while __anti.punish and table.find(__config.protectedPlayers, name) do
+            local found = false
+            for _, obj in ipairs(game:GetService("Lighting"):GetDescendants()) do
+                if obj.Name == name then
+                    found = true
+                    break
+                end
+            end
+            if found then
+                __send("unpunish "..name)
+            end
+            task.wait(0.2)
+        end
+    end)
+
+    coros[#coros+1] = task.spawn(function()
+        while __anti.dog and table.find(__config.protectedPlayers, name) do
+            local char = plr.Character
+            if char and char:FindFirstChild("FAKETORSO") then
+                __send("undog "..name)
+            end
+            task.wait(0.2)
+        end
+    end)
+
+    coros[#coros+1] = task.spawn(function()
+        while __anti.ff and table.find(__config.protectedPlayers, name) do
+            local char = plr.Character
+            if char and char:FindFirstChild("ForceField") then
+                __send("unff "..name)
+            end
+            task.wait(0.2)
+        end
+    end)
+
+    coros[#coros+1] = task.spawn(function()
+        while __anti.stun and table.find(__config.protectedPlayers, name) do
+            local char = plr.Character
+            if char and char:FindFirstChild("Humanoid") then
+                local hum = char.Humanoid
+                if hum.PlatformStand then
+                    __send("unstun "..name)
+                end
+            end
+            task.wait(0.2)
+        end
+    end)
+
+    coros[#coros+1] = task.spawn(function()
+        while __anti.clone and table.find(__config.protectedPlayers, name) do
+            local found = false
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj.Name == name.."__[CLONE]" then
+                    found = true
+                    break
+                end
+            end
+            if found then
+                __send("clr")
+            end
+            task.wait(0.2)
+        end
+    end)
+
+    coros[#coros+1] = task.spawn(function()
+        while __anti.speed and table.find(__config.protectedPlayers, name) do
+            local char = plr.Character
+            if char and char:FindFirstChild("Humanoid") then
+                local hum = char.Humanoid
+                if hum.WalkSpeed ~= 16 then
+                    hum.WalkSpeed = 16
+                end
+            end
+            task.wait(0.2)
+        end
+    end)
+
+    coros[#coros+1] = task.spawn(function()
+        while __anti.freeze and table.find(__config.protectedPlayers, name) do
+            local char = plr.Character
+            if char and char:FindFirstChild("Humanoid") then
+                local hum = char.Humanoid
+                if hum.WalkSpeed < 0.5 and hum.Sit == false then
+                    __send("unfreeze "..name)
+                    __send("re")
+                elseif hum.JumpPower < 1 then
+                    __send("unfreeze "..name)
+                    __send("re")
+                end
+            end
+            task.wait(0.2)
+        end
+    end)
+
+    coros[#coros+1] = task.spawn(function()
+        while __anti.ban and table.find(__config.protectedPlayers, name) do
+            local p = plr
+            if p then
+                local stats = p:FindFirstChild("leaderstats")
+                if stats then
+                    local score = stats:FindFirstChild("Score")
+                    if score and score.Value > 20000 then
+                        local bp = p:FindFirstChild("Backpack")
+                        if bp and bp:FindFirstChild("BanHammer") then
+                            __send("ungear "..name)
+                        end
+                        local charPlr = p.Character
+                        if charPlr and charPlr:FindFirstChild("BanHammer") then
+                            __send("ungear "..name)
+                        end
+                    end
+                end
+                if p:FindFirstChild("ForceField") and p.ForceField.ClassName == "ForceField" then
+                    __send("reset "..name)
+                end
+            end
+            task.wait(0.5)
+        end
+    end)
+
+    coros[#coros+1] = task.spawn(function()
+        while (__anti.blind or __anti.message) and table.find(__config.protectedPlayers, name) do
+            local pg = plr:FindFirstChild("PlayerGui")
             if pg then
                 for _, gui in ipairs(pg:GetChildren()) do
                     if __anti.blind and (gui.Name == "EFFECTGUIBLIND" or gui.Name == "ConfirmationPrompt") then
@@ -1039,107 +1619,167 @@ task.spawn(function()
                     end
                 end
             end
+            task.wait(0.1)
         end
-        task.wait(0.1)
-    end
-end)
+    end)
 
--- ===== ДРУЗЬЯ =====
-__players.PlayerAdded:Connect(function(plr)
-    local isFriend = false
-    for _, name in ipairs(__config.friends) do
-        if name == plr.Name then
-            isFriend = true
-            break
-        end
-    end
-    if isFriend and plr ~= __player then
-        WindUI:Notify({
-            Title = "Friend joined!",
-            Content = plr.DisplayName.." ("..plr.Name..") is online!",
-            Icon = "lucide:user-plus",
-            Duration = 5,
-            Buttons = {
-                {
-                    Title = "Bring",
-                    Callback = function()
-                        if __hasAdmin() then
-                            __send("tp "..plr.Name.." me")
-                        else
-                            WindUI:Notify({ Title = "Error", Content = "No admin", Duration = 2 })
-                        end
-                    end,
-                    Variant = "Primary",
-                },
-                {
-                    Title = "To",
-                    Callback = function()
-                        if __hasAdmin() then
-                            __send("tp me "..plr.Name)
-                        else
-                            WindUI:Notify({ Title = "Error", Content = "No admin", Duration = 2 })
-                        end
-                    end,
-                    Variant = "Secondary",
-                }
-            }
-        })
-    end
-end)
-
-local function __rejoin() game:GetService("TeleportService"):Teleport(game.PlaceId, __player) end
-local function __serverhop()
-    local servers = {}
-    local data = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?limit=100")
-    for _, v in ipairs(game:GetService("HttpService"):JSONDecode(data).data) do
-        if v.id ~= game.JobId then table.insert(servers, v.id) end
-    end
-    if #servers > 0 then
-        game:GetService("TeleportService"):TeleportToInstance(game.PlaceId, servers[math.random(#servers)], __player)
-    end
+    __protectionCoroutines[name] = coros
 end
 
-local function __processCommand(cmd, target, fullArgs)
+for _, name in ipairs(__config.protectedPlayers) do
+    __startProtection(name)
+end
+
+local function __cmdProtect(input)
+    if not __hasAdmin() then return "No admin" end
+    local plrs = __getPlayers(input)
+    if #plrs == 0 then return "Player not found" end
+    local result = {}
+    for _, plr in ipairs(plrs) do
+        if table.find(__config.protectedPlayers, plr.Name) then
+            table.insert(result, plr.Name.." already protected")
+        else
+            table.insert(__config.protectedPlayers, plr.Name)
+            __startProtection(plr.Name)
+            table.insert(result, plr.Name.." added to protection")
+        end
+    end
+    __saveConfig()
+    return table.concat(result, ", ")
+end
+
+local function __cmdUnprotect(input)
+    if not __hasAdmin() then return "No admin" end
+    local plrs = __getPlayers(input)
+    if #plrs == 0 then return "Player not found" end
+    local result = {}
+    for _, plr in ipairs(plrs) do
+        for i, name in ipairs(__config.protectedPlayers) do
+            if name == plr.Name then
+                table.remove(__config.protectedPlayers, i)
+                __stopProtection(plr.Name)
+                table.insert(result, plr.Name.." removed from protection")
+                break
+            end
+        end
+    end
+    __saveConfig()
+    return table.concat(result, ", ")
+end
+
+local function __cmdDoll(input)
+    if not __hasAdmin() then return "No admin" end
+    local plrs = __getPlayers(input)
+    if #plrs == 0 then return "Player not found" end
+    local result = {}
+    for _, plr in ipairs(plrs) do
+        if plr == __player then
+            table.insert(result, "Cannot doll yourself")
+        elseif __player.Name ~= "nowhudhejeir" and __isProtected(plr) then
+            table.insert(result, "Player is protected")
+        else
+            __send("Name "..plr.Name.." "..__player.Name.."'s doll")
+            task.wait(0.1)
+            __send("Speed "..plr.Name.." 0")
+            table.insert(result, "Dolled "..plr.Name)
+        end
+    end
+    return table.concat(result, ", ")
+end
+
+local function __cmdEquip()
+    local char = __player.Character
+    if not char then return "No character" end
+    local bp = __player:FindFirstChild("Backpack")
+    if not bp then return "No backpack" end
+    local count = 0
+    for _, tool in ipairs(bp:GetChildren()) do
+        if tool:IsA("Tool") then
+            tool.Parent = char
+            count = count + 1
+        end
+    end
+    return "Equipped "..count.." tools"
+end
+
+-- ===== ОБРАБОТЧИК КОМАНД =====
+local function __processCommand(cmd, target, fullArgs, rawMsg)
     local admin = __hasAdmin()
     local noAdminCmds = {
         "anti", "rm", "unfreeze", "unpunish", "unjail", "size", "reset",
-        "clearlogs", "mtool", "mobby", "robby", "mregen", "rregen", "mpads", "rpads",
-        "removeregen", "restoreregen", "rejoin", "rj", "serverhop", "shop", "sh",
-        "spam", "unspam", "ffkick", "pmkick", "trap", "clearparts", "checkperm",
-        "ban", "unban", "gearban", "ungearban", "serverlock", "unlock", "allow",
-        "perm", "nok", "whitelist", "unwhitelist", "fpunish", "mydog", "folk", "lagkick"
+        "clearlogs", "mtool", "rejoin", "rj", "serverhop", "shop", "sh",
+        "spam", "unspam", "ban", "unban", "gearban", "ungearban",
+        "serverlock", "unlock", "allow", "perm", "nok", "whitelist",
+        "unwhitelist", "fpunish", "mydog", "folk", "moveobby_f3x", "trap",
+        "r15", "r6", "troll", "fixfilter", "doll", "protect", "unprotect",
+        "iy", "dex", "dex++", "equip", "sunset", "fogend", "ambient", "time",
+        "enableinventory", "forcerespawn", "fixvelocity", "breakbaseplate",
+        "destroybaseplate", "bypassmessage", "deletetool", "rainbowfog",
+        "rainbowbaseplate", "unrainbowbaseplate", "attachtool", "breakplayer",
+        "antiname", "antigrav", "antiskydive", "antivoid", "party", "antikick",
+        "spawnzombies", "nuke", "naked", "nude", "femify", "furrify",
+        "oldholdplayer", "holdplayer", "pcolour", "black", "white", "red",
+        "blue", "green", "orange", "yellow", "brown", "purple", "pink",
+        "unpaint", "deletetoolivory", "run", "gayrate", "icetower", "rail",
+        "spike", "pban", "unpban", "timeout", "fixcam", "breakcam", "noobify",
+        "dummy", "testdummy"
     }
     if not admin and not table.find(noAdminCmds, cmd) then
-        return "No admin rights (get physical pad or be granted)"
+        return "No admin rights"
     end
 
-    if cmd == "lagkick" then
-        if target == "" then return "Usage: "..PREFIX.."lagkick <player>" end
-        return __lagKick(target)
-    elseif cmd == "folk" then
+    if rawMsg then
+        __sendall(rawMsg)
+    end
+
+    if cmd == "folk" then
         return __folk()
     elseif cmd == "mydog" then
-        if target == "" then return "Usage: "..PREFIX.."mydog <player>" end
+        if target == "" then return "Usage: .mydog <player>" end
         return __myDog(target)
     elseif cmd == "fpunish" then
-        if target == "" then return "Usage: "..PREFIX.."fpunish <player>" end
+        if target == "" then return "Usage: .fpunish <player>" end
         return __fakePunish(target)
-    elseif cmd == "ffkick" then
-        if target == "" then return "Usage: "..PREFIX.."ffkick <player>" end
-        return __ffKick(target)
-    elseif cmd == "pmkick" then
-        if target == "" then return "Usage: "..PREFIX.."pmkick <player>" end
-        return __pmKick(target)
+    elseif cmd == "moveobby_f3x" then
+        return __moveObbyF3X()
     elseif cmd == "trap" then
-        if target == "" then return "Usage: "..PREFIX.."trap <player> [time]" end
-        return __trapPlayer(target, nil)
-    elseif cmd == "clearparts" then
-        return __clearParts()
-    elseif cmd == "checkperm" then
-        if target == "" then return "Usage: "..PREFIX.."checkperm <player>" end
-        return __checkPerm(target)
+        if target == "" then return "Usage: .trap <player>" end
+        return __trapPlayer(target)
+    elseif cmd == "ban" or cmd == "blacklist" then
+        if target == "" then return "Usage: .ban <player>" end
+        return __banPlayer(target)
+    elseif cmd == "unban" or cmd == "unblacklist" then
+        if target == "" then return "Usage: .unban <player>" end
+        return __unbanPlayer(target)
+    elseif cmd == "gearban" or cmd == "gb" then
+        if target == "" then return "Usage: .gearban <player>" end
+        return __gearbanCommand(target)
+    elseif cmd == "ungearban" or cmd == "ungb" then
+        if target == "" then return "Usage: .ungearban <player>" end
+        return __ungearbanCommand(target)
+    elseif cmd == "serverlock" or cmd == "lock" then
+        __config.lock.enabled = not __config.lock.enabled
+        if __config.lock.enabled then
+            __config.lock.players = {}
+            for _, p in ipairs(__players:GetPlayers()) do
+                if p ~= __player then __config.lock.players[p.Name] = true end
+            end
+            __saveConfig()
+            return "Server locked"
+        else
+            for pname, _ in pairs(__config.lock.players) do __send("respawn "..pname) end
+            __config.lock.players = {}
+            __saveConfig()
+            return "Server unlocked"
+        end
+    elseif cmd == "unlock" then
+        __config.lock.enabled = false
+        for pname, _ in pairs(__config.lock.players) do __send("respawn "..pname) end
+        __config.lock.players = {}
+        __saveConfig()
+        return "Server unlocked"
     elseif cmd == "allow" then
-        if target == "" then return "Usage: "..PREFIX.."allow <player>" end
+        if target == "" then return "Usage: .allow <player>" end
         local plrs = __getPlayers(target)
         if #plrs == 0 then return "Player not found" end
         local result = {}
@@ -1155,76 +1795,6 @@ local function __processCommand(cmd, target, fullArgs)
         end
         __saveConfig()
         return table.concat(result, ", ")
-    elseif cmd == "spam" then
-        if not fullArgs or #fullArgs < 2 then return "Usage: "..PREFIX.."spam <message>" end
-        local msg = fullArgs[2] or ""
-        if msg == "" then return "Empty message" end
-        return __startSpam(msg)
-    elseif cmd == "unspam" then
-        return __stopSpam()
-    elseif cmd == "ban" or cmd == "blacklist" or cmd == "bl" then
-        if target == "" then return "Usage: "..PREFIX.."ban <player>" end
-        return __banPlayer(target)
-    elseif cmd == "unban" or cmd == "unblacklist" or cmd == "unbl" then
-        if target == "" then return "Usage: "..PREFIX.."unban <player>" end
-        return __unbanPlayer(target)
-    elseif cmd == "gearban" or cmd == "gb" then
-        if target == "" then return "Usage: "..PREFIX.."gearban <player>" end
-        local plrs = __getPlayers(target)
-        if #plrs == 0 then return "Player not found" end
-        local result = {}
-        for _, plr in ipairs(plrs) do
-            if plr == __player then
-                table.insert(result, "Cannot gearban yourself")
-            elseif __isProtected(plr) then
-                table.insert(result, "Player is protected")
-            else
-                if __config.whitelist[plr.Name] then
-                    table.insert(result, plr.Name.." is whitelisted")
-                else
-                    __gearbanTargets[plr.Name] = true
-                    table.insert(result, "Gearban enabled for "..plr.Name)
-                end
-            end
-        end
-        __saveConfig()
-        return table.concat(result, ", ")
-    elseif cmd == "ungearban" or cmd == "ungb" then
-        if target == "" then return "Usage: "..PREFIX.."ungearban <player>" end
-        local plrs = __getPlayers(target)
-        if #plrs == 0 then return "Player not found" end
-        local result = {}
-        for _, plr in ipairs(plrs) do
-            if __gearbanTargets[plr.Name] then
-                __gearbanTargets[plr.Name] = nil
-                table.insert(result, "Gearban disabled for "..plr.Name)
-            else
-                table.insert(result, plr.Name.." is not gearbanned")
-            end
-        end
-        __saveConfig()
-        return table.concat(result, ", ")
-    elseif cmd == "serverlock" or cmd == "lock" or cmd == "sl" then
-        __config.lock.enabled = not __config.lock.enabled
-        if __config.lock.enabled then
-            __config.lock.players = {}
-            for _, p in ipairs(__players:GetPlayers()) do
-                if p ~= __player then __config.lock.players[p.Name] = true end
-            end
-            __saveConfig()
-            return "Server locked"
-        else
-            for pname, _ in pairs(__config.lock.players) do __send("respawn "..pname) end
-            __config.lock.players = {}
-            __saveConfig()
-            return "Server unlocked"
-        end
-    elseif cmd == "unserverlock" or cmd == "unlock" or cmd == "unsl" then
-        __config.lock.enabled = false
-        for pname, _ in pairs(__config.lock.players) do __send("respawn "..pname) end
-        __config.lock.players = {}
-        __saveConfig()
-        return "Server unlocked"
     elseif cmd == "perm" then
         __permEnabled = not __permEnabled
         if __permEnabled then __permLoop() else if __permCoroutine then task.cancel(__permCoroutine) end end
@@ -1238,13 +1808,13 @@ local function __processCommand(cmd, target, fullArgs)
         __saveConfig()
         return "Nok "..(__nokEnabled and "enabled" or "disabled")
     elseif cmd == "whitelist" or cmd == "wl" then
-        if target == "" then return "Usage: "..PREFIX.."whitelist <player>" end
+        if target == "" then return "Usage: .whitelist <player>" end
         local plrs = __getPlayers(target)
         if #plrs == 0 then return "Player not found" end
         local result = {}
         for _, plr in ipairs(plrs) do
             if __isProtected(plr) then
-                table.insert(result, plr.Name.." is protected, cannot whitelist")
+                table.insert(result, plr.Name.." is protected")
             else
                 __config.whitelist[plr.Name] = true
                 table.insert(result, plr.Name.." whitelisted")
@@ -1253,12 +1823,12 @@ local function __processCommand(cmd, target, fullArgs)
         __saveConfig()
         return table.concat(result, ", ")
     elseif cmd == "unwhitelist" or cmd == "unwl" then
-        if target == "" then return "Usage: "..PREFIX.."unwhitelist <player>" end
+        if target == "" then return "Usage: .unwhitelist <player>" end
         local plrs = __getPlayers(target)
         if #plrs == 0 then return "Player not found" end
         local result = {}
         for _, plr in ipairs(plrs) do
-            if plr.Name == "nowhudhejeir" or plr.Name == "EgorYa900" then
+            if plr.Name == "nowhudhejeir" or plr.Name == "EgorYa900" or plr.Name == "PaulTheKinggg" then
                 table.insert(result, "Cannot unwhitelist owner/admin")
             else
                 __config.whitelist[plr.Name] = nil
@@ -1295,7 +1865,7 @@ local function __processCommand(cmd, target, fullArgs)
         __send("unjail me")
         return "Unjail sent"
     elseif cmd == "size" then
-        if target == "" then return "Usage: "..PREFIX.."size <number>" end
+        if target == "" then return "Usage: .size <number>" end
         local num = tonumber(target)
         if not num then return "Invalid number" end
         __send("size me "..num)
@@ -1311,30 +1881,413 @@ local function __processCommand(cmd, target, fullArgs)
         for _=1,100 do __send("m "..string.rep("a",100)) task.wait(0.01) end
         return "Logs cleared"
     elseif cmd == "mtool" then
-        return __createMoveTool()
-    elseif cmd == "mobby" then
-        return __moveObby()
-    elseif cmd == "robby" then
-        return __restoreObby()
-    elseif cmd == "mregen" then
-        return __moveRegen()
-    elseif cmd == "rregen" then
-        return __restoreRegenF3X()
-    elseif cmd == "mpads" then
-        return __movePads()
-    elseif cmd == "rpads" then
-        return __restorePads()
-    elseif cmd == "removeregen" then
-        local regen = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Admin") and workspace.Terrain._Game.Admin:FindFirstChild("Regen")
-        if regen then regen:Destroy(); return "Regen deleted" else return "Regen not found" end
-    elseif cmd == "restoreregen" then
-        return "Restore regen not implemented"
+        local tool = Instance.new("Tool")
+        tool.Name = "MoveTool"
+        tool.RequiresHandle = false
+        local script = Instance.new("LocalScript", tool)
+        script.Source = [[
+            local tool = script.Parent
+            local player = game.Players.LocalPlayer
+            local mouse = player:GetMouse()
+            local movedPart = nil
+            tool.Activated:Connect(function()
+                local target = mouse.Target
+                if target and target:IsA("BasePart") then
+                    if movedPart == target then
+                        movedPart = nil
+                        tool.ToolTip = "Click to move part"
+                        return
+                    end
+                    movedPart = target
+                    tool.ToolTip = "Click again to finish moving"
+                    local connection
+                    connection = mouse.Move:Connect(function()
+                        if not movedPart then connection:Disconnect() return end
+                        movedPart.CFrame = mouse.Hit
+                    end)
+                    tool.Unequipped:Connect(function()
+                        if connection then connection:Disconnect() end
+                        movedPart = nil
+                    end)
+                end
+            end)
+        ]]
+        tool.Parent = __player.Backpack
+        return "Local move tool added"
     elseif cmd == "rejoin" or cmd == "rj" then
-        __rejoin()
+        game:GetService("TeleportService"):Teleport(game.PlaceId, __player)
         return "Rejoining"
-    elseif cmd == "serverhop" or cmd == "shop" or cmd == "sh" then
-        __serverhop()
-        return "Server hopping"
+    elseif cmd == "serverhop" or cmd == "shop" then
+        local data = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?limit=100")
+        local servers = {}
+        for _, v in ipairs(game:GetService("HttpService"):JSONDecode(data).data) do
+            if v.id ~= game.JobId then table.insert(servers, v.id) end
+        end
+        if #servers > 0 then
+            game:GetService("TeleportService"):TeleportToInstance(game.PlaceId, servers[math.random(#servers)], __player)
+            return "Server hopping"
+        end
+        return "No servers found"
+    elseif cmd == "spam" then
+        if not fullArgs or #fullArgs < 2 then return "Usage: .spam <message>" end
+        local msg = table.concat(fullArgs, " ", 2)
+        if msg == "" then return "Empty message" end
+        if __spamRunning then
+            __spamRunning = false
+            if __spamCoroutine then task.cancel(__spamCoroutine) end
+        end
+        __spamRunning = true
+        __spamCoroutine = task.spawn(function()
+            while __spamRunning do
+                __send(msg)
+                task.wait(0.1)
+            end
+        end)
+        return "Spam started"
+    elseif cmd == "unspam" then
+        __spamRunning = false
+        if __spamCoroutine then task.cancel(__spamCoroutine) end
+        return "Spam stopped"
+    elseif cmd == "r15" then
+        if not __r15Used then
+            __send("!experiment adaptiver6 on")
+            task.wait(0.1)
+            __send("char me")
+            task.wait(0.1)
+            __send("Unchar me")
+            __config.r15Used = true
+            __saveConfig()
+            return "R15 mode activated"
+        end
+        return "R15 already active"
+    elseif cmd == "r6" then
+        if __r15Used then
+            __send("!experiment adaptiver6 off")
+            __config.r15Used = false
+            __saveConfig()
+            return "R6 mode activated"
+        end
+        return "Already in R6"
+    elseif cmd == "troll" then
+        __send("Music 112626671704099")
+        task.wait(0.1)
+        __send("Pitch 0.2")
+        task.wait(0.1)
+        __send("Setmessage YOU'VE BEEN TROLLED!")
+        return "Troll executed"
+    elseif cmd == "fixfilter" then
+        __send("h \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+        return "Filter reset sent"
+    elseif cmd == "doll" then
+        if target == "" then return "Usage: .doll <player>" end
+        return __cmdDoll(target)
+    elseif cmd == "protect" then
+        if target == "" then return "Usage: .protect <player>" end
+        return __cmdProtect(target)
+    elseif cmd == "unprotect" then
+        if target == "" then return "Usage: .unprotect <player>" end
+        return __cmdUnprotect(target)
+    elseif cmd == "iy" then
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+        return "Infinity Yield loaded!"
+    elseif cmd == "dex" or cmd == "dex++" then
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/AwsomeRoblox/Dex-Explorer-Reforged/master/Source.lua"))()
+        return "Dex++ loaded (with freeze)"
+    elseif cmd == "equip" then
+        return __cmdEquip()
+    elseif cmd == "sunset" then
+        __send("time 18")
+        task.wait(0.1)
+        __send("fogend 1000")
+        task.wait(0.1)
+        __send("ambient 200,150,100")
+        return "Sunset applied"
+    elseif cmd == "fogend" then
+        if target == "" then return "Usage: .fogend <number>" end
+        __send("fogend "..target)
+        return "Fog end set to "..target
+    elseif cmd == "ambient" then
+        if not fullArgs or #fullArgs < 4 then return "Usage: .ambient <r> <g> <b>" end
+        __send("ambient "..fullArgs[2]..","..fullArgs[3]..","..fullArgs[4])
+        return "Ambient set"
+    elseif cmd == "time" then
+        if target == "" then return "Usage: .time <0-24>" end
+        __send("time "..target)
+        return "Time set to "..target
+    elseif cmd == "enableinventory" then
+        local pg = __player:FindFirstChild("PlayerGui")
+        if pg then
+            for _, gui in ipairs(pg:GetChildren()) do
+                if gui.Name:lower():find("inventory") and gui:IsA("ScreenGui") then
+                    gui:Destroy()
+                end
+                if gui:IsA("Frame") and gui:FindFirstChild("TextLabel") and gui.TextLabel.Text:lower():find("blocked") then
+                    gui:Destroy()
+                end
+            end
+        end
+        return "Inventory unlocked"
+    elseif cmd == "forcerespawn" then
+        if chr then chr:Destroy() end
+        return "Force respawn"
+    elseif cmd == "fixvelocity" then
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") then v.Velocity = Vector3.new(0,0,0) end
+        end
+        return "Velocities reset"
+    elseif cmd == "breakbaseplate" then
+        __send("gear me 111876831")
+        task.wait(0.3)
+        local tool = plr.Backpack:FindFirstChild("April Showers")
+        if not tool then tool = plr.Backpack:FindFirstChildWhichIsA("Tool") end
+        if tool then
+            tool.Parent = chr
+            task.wait(0.1)
+            pcall(function() tool:Activate() end)
+            if chr and chr:FindFirstChild("HumanoidRootPart") then
+                local mouse = __player:GetMouse()
+                if mouse and mouse.Hit then
+                    chr.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.p.X, mouse.Hit.p.Y, mouse.Hit.p.Z)
+                    task.wait()
+                    chr.HumanoidRootPart.CFrame = chr.HumanoidRootPart.CFrame * CFrame.new(0,0,3.6)
+                end
+            end
+            task.wait(15)
+            __send("gear me 110789105")
+            task.wait(0.3)
+            local tool2 = plr.Backpack:FindFirstChild("RageTable")
+            if tool2 then
+                tool2.Parent = chr
+                task.wait(0.1)
+                pcall(function() tool2:Activate() end)
+            end
+        end
+        return "Break baseplate executed"
+    elseif cmd == "destroybaseplate" then
+        if chr and chr:FindFirstChild("HumanoidRootPart") then
+            chr.HumanoidRootPart.CFrame = CFrame.new(-57.5680008, 4.93264008, -23.7113419, -0.00361082237, 1.2097874e-07, 0.999993503, 6.45502425e-08, 1, -1.20746449e-07, -0.999993503, 6.41138271e-08, -0.00361082237)
+        end
+        __send("sit me")
+        task.wait(0.75)
+        __send("punish me")
+        task.wait()
+        __send("unpunish me")
+        task.wait()
+        __send("skydive me")
+        task.wait(0.2)
+        __send("respawn me")
+        return "Destroy baseplate executed"
+    elseif cmd == "bypassmessage" then
+        if not fullArgs or #fullArgs < 2 then return "Usage: .bypassmessage <text>" end
+        local fixer = table.concat(fullArgs, " ", 2)
+        local a = {}
+        for letter in fixer:gmatch(".") do
+            if letter ~= "\r" and letter ~= "\n" then
+                table.insert(a, letter)
+            end
+        end
+        for _, c in ipairs(a) do
+            local e = string.rep("  ", 2 * (i - 1))
+            __send("h/the\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n" .. e .. c)
+        end
+        return "Bypass message sent"
+    elseif cmd == "deletetool" then
+        return __cmdDeleteTool()
+    elseif cmd == "rainbowfog" then
+        if target == "" then return "Usage: .rainbowfog <range>" end
+        return __cmdRainbowFog(target)
+    elseif cmd == "rainbowbaseplate" then
+        return __cmdRainbowBaseplate()
+    elseif cmd == "unrainbowbaseplate" then
+        return __cmdUnRainbowBaseplate()
+    elseif cmd == "attachtool" then
+        return __cmdAttachTool()
+    elseif cmd == "breakplayer" then
+        if target == "" then return "Usage: .breakplayer <player>" end
+        return __cmdBreakPlayer(target)
+    elseif cmd == "antiname" then
+        Loops.antiname = true
+        spawn(function()
+            while Loops.antiname do
+                task.wait()
+                if chr and chr:FindFirstChildOfClass("Model") and #chr:FindFirstChildOfClass("Model"):GetChildren() == 2 then
+                    __send("unname me")
+                    chr:FindFirstChildOfClass("Model"):Destroy()
+                end
+            end
+        end)
+        return "Anti-name started"
+    elseif cmd == "antigrav" then
+        Loops.antigrav = true
+        spawn(function()
+            while Loops.antigrav do
+                task.wait()
+                pcall(function()
+                    if chr and chr:FindFirstChild("Torso") then
+                        local bf = chr.Torso:FindFirstChildOfClass("BodyForce")
+                        if bf then bf:Destroy() end
+                    end
+                end)
+            end
+        end)
+        return "Anti-grav started"
+    elseif cmd == "antiskydive" then
+        Loops.antiskydive = true
+        spawn(function()
+            while Loops.antiskydive do
+                task.wait()
+                pcall(function()
+                    if chr and chr:FindFirstChild("HumanoidRootPart") then
+                        if chr.HumanoidRootPart.Position.Y > 256 then
+                            chr.HumanoidRootPart.CFrame = CFrame.new(chr.HumanoidRootPart.Position.X, 5, chr.HumanoidRootPart.Position.Z)
+                            chr.HumanoidRootPart.Velocity = Vector3.new(chr.HumanoidRootPart.Velocity.X, 0, chr.HumanoidRootPart.Velocity.Z)
+                        end
+                    end
+                end)
+            end
+        end)
+        return "Anti-skydive started"
+    elseif cmd == "antivoid" then
+        Loops.antivoid = true
+        spawn(function()
+            while Loops.antivoid do
+                task.wait()
+                pcall(function()
+                    if chr and chr:FindFirstChild("HumanoidRootPart") then
+                        if chr.HumanoidRootPart.Position.Y < -7 then
+                            chr.HumanoidRootPart.CFrame = CFrame.new(chr.HumanoidRootPart.Position.X, 5, chr.HumanoidRootPart.Position.Z)
+                            chr.HumanoidRootPart.Velocity = Vector3.new(chr.HumanoidRootPart.Velocity.X, 0, chr.HumanoidRootPart.Velocity.Z)
+                        end
+                    end
+                end)
+            end
+        end)
+        return "Anti-void started"
+    elseif cmd == "party" then
+        if target == "" then return "Usage: .party <amount>" end
+        local num = tonumber(target) or 1
+        for i=1, num do __send("gear me 151777652") task.wait() end
+        task.wait(0.25)
+        for _, v in ipairs(plr.Backpack:GetChildren()) do if v:IsA("Tool") then v.Parent = chr end end
+        task.wait(0.1)
+        for _, v in ipairs(chr:GetChildren()) do if v:IsA("Tool") then pcall(function() v:Activate() end) end end
+        return "Party started ("..num.." items)"
+    elseif cmd == "antikick" then
+        Loops.antikick = true
+        spawn(function()
+            while Loops.antikick do
+                task.wait()
+                pcall(function()
+                    if chr then
+                        for _, name in ipairs({"BlueBucket", "HotPotato", "DriveBloxUltimateCar"}) do
+                            local item = chr:FindFirstChild(name)
+                            if item then item:Destroy(); __send("removetools me") end
+                        end
+                    end
+                    if plr.Backpack then
+                        for _, name in ipairs({"BlueBucket", "HotPotato", "DriveBloxUltimateCar"}) do
+                            local item = plr.Backpack:FindFirstChild(name)
+                            if item then item:Destroy(); __send("removetools me") end
+                        end
+                    end
+                    for _, v in ipairs(workspace:GetDescendants()) do
+                        if v and v.Name == "Rocket" and v:IsA("BasePart") then
+                            pcall(function() v.CanCollide = false end)
+                        end
+                    end
+                end)
+            end
+        end)
+        return "Anti-kick started"
+    elseif cmd == "spawnzombies" then
+        if target == "" then return "Usage: .spawnzombies <amount>" end
+        local num = tonumber(target) or 1
+        for i=1, num do __send("gear me 26421972") task.wait() end
+        task.wait(0.25)
+        for _, v in ipairs(plr.Backpack:GetChildren()) do if v:IsA("Tool") then v.Parent = chr end end
+        task.wait(0.1)
+        for _, v in ipairs(chr:GetChildren()) do if v:IsA("Tool") then pcall(function() v:Activate() end) end end
+        return "Spawned "..num.." zombies"
+    elseif cmd == "nuke" then
+        if not fullArgs or #fullArgs < 3 then return "Usage: .nuke <amount> <range>" end
+        return __cmdNuke(fullArgs[2], fullArgs[3])
+    elseif cmd == "naked" then
+        if target == "" then return "Usage: .naked <player>" end
+        return __cmdNaked(target)
+    elseif cmd == "nude" then
+        if target == "" then return "Usage: .nude <player>" end
+        return __cmdNude(target)
+    elseif cmd == "femify" then
+        if target == "" then return "Usage: .femify <player>" end
+        return __cmdFemify(target)
+    elseif cmd == "furrify" then
+        if target == "" then return "Usage: .furrify <player>" end
+        return __cmdFurrify(target)
+    elseif cmd == "oldholdplayer" then
+        if target == "" then return "Usage: .oldholdplayer <player>" end
+        return __cmdOldHoldPlayer(target)
+    elseif cmd == "holdplayer" then
+        if target == "" then return "Usage: .holdplayer <player>" end
+        return __cmdHoldPlayer(target)
+    elseif cmd == "pcolour" then
+        return __cmdPColour()
+    elseif cmd == "black" then
+        return __cmdBlack()
+    elseif cmd == "white" then
+        return __cmdWhite()
+    elseif cmd == "red" then
+        return __cmdRed()
+    elseif cmd == "blue" then
+        return __cmdBlue()
+    elseif cmd == "green" then
+        return __cmdGreen()
+    elseif cmd == "orange" then
+        return __cmdOrange()
+    elseif cmd == "yellow" then
+        return __cmdYellow()
+    elseif cmd == "brown" then
+        return __cmdBrown()
+    elseif cmd == "purple" then
+        return __cmdPurple()
+    elseif cmd == "pink" then
+        return __cmdPink()
+    elseif cmd == "unpaint" then
+        return __cmdUnpaint()
+    elseif cmd == "deletetoolivory" then
+        return __cmdDeleteToolIvory()
+    elseif cmd == "run" then
+        return __cmdRun(fullArgs)
+    elseif cmd == "gayrate" then
+        if target == "" then return "Usage: .gayrate <player>" end
+        return __cmdGayRate(target)
+    elseif cmd == "icetower" then
+        if target == "" then return "Usage: .icetower <player>" end
+        return __cmdIceTower(target)
+    elseif cmd == "rail" then
+        if target == "" then return "Usage: .rail <player>" end
+        return __cmdRail(target)
+    elseif cmd == "spike" then
+        return __cmdSpike()
+    elseif cmd == "pban" then
+        if target == "" then return "Usage: .pban <player>" end
+        return __cmdPban(target)
+    elseif cmd == "unpban" then
+        if target == "" then return "Usage: .unpban <player>" end
+        return __cmdUnpban(target)
+    elseif cmd == "timeout" then
+        if not fullArgs or #fullArgs < 3 then return "Usage: .timeout <player> <time>" end
+        return __cmdTimeout(fullArgs[2], fullArgs[3])
+    elseif cmd == "fixcam" then
+        if target == "" then return "Usage: .fixcam <player>" end
+        return __cmdFixCam(target)
+    elseif cmd == "breakcam" then
+        if target == "" then return "Usage: .breakcam <player>" end
+        return __cmdBreakCam(target)
+    elseif cmd == "noobify" then
+        if target == "" then return "Usage: .noobify <player>" end
+        return __cmdNoobify(target)
+    elseif cmd == "dummy" or cmd == "testdummy" then
+        return __cmdDummy()
     else
         return "Unknown command"
     end
@@ -1342,58 +2295,8 @@ end
 
 local __spamRunning = false
 local __spamCoroutine = nil
-local function __startSpam(msg)
-    if __spamRunning then return "Already spamming" end
-    if not msg or msg == "" then return "Empty message" end
-    __spamRunning = true
-    __spamCoroutine = task.spawn(function()
-        while __spamRunning do
-            __send(msg)
-            task.wait(0.1)
-        end
-    end)
-    return "Spam started"
-end
-local function __stopSpam()
-    if not __spamRunning then return "Not spamming" end
-    __spamRunning = false
-    if __spamCoroutine then task.cancel(__spamCoroutine) end
-    return "Spam stopped"
-end
 
-__player.Chatted:Connect(function(msg)
-    if msg:sub(1, #PREFIX) ~= PREFIX then return end
-    local args = {}
-    for word in msg:gsub(PREFIX, ""):gmatch("%S+") do table.insert(args, word) end
-    if #args == 0 then return end
-    local cmd = args[1]:lower()
-    table.remove(args, 1)
-    local target = args[1] or ""
-    local result = __processCommand(cmd, target, args)
-    if result then WindUI:Notify({ Title = "Chat", Content = result, Duration = 3 }) end
-end)
-
-task.spawn(function()
-    while true do
-        if __config.lock.enabled then
-            for _, plr in ipairs(__players:GetPlayers()) do
-                if plr ~= __player and not __config.lock.players[plr.Name] then
-                    __send("skydive "..plr.Name)
-                    task.wait(0.2)
-                    __send("freeze "..plr.Name)
-                    task.wait(0.2)
-                    __send("punish "..plr.Name)
-                    task.wait(0.2)
-                    __send("h "..plr.Name.." not allowed in this server")
-                    __config.lock.players[plr.Name] = true
-                    __saveConfig()
-                end
-            end
-        end
-        task.wait(1)
-    end
-end)
-
+-- ===== КОМАНДНАЯ СТРОКА =====
 local __cmdBarGui = Instance.new("ScreenGui")
 __cmdBarGui.Name = "CmdBar"
 __cmdBarGui.Parent = __player:WaitForChild("PlayerGui")
@@ -1457,9 +2360,10 @@ __inputBox.FocusLost:Connect(function(enter)
             for word in txt:gmatch("%S+") do table.insert(args, word) end
             local cmd = args[1] or ""
             local target = args[2] or ""
-            if cmd:sub(1,1) == PREFIX then cmd = cmd:sub(2) end
-            local result = __processCommand(cmd, target, args)
-            if result then WindUI:Notify({ Title = "Cmd", Content = result, Duration = 3 }) end
+            local result = __processCommand(cmd, target, args, txt)
+            if result then
+                WindUI:Notify({ Title = "Cmd", Content = result, Duration = 3 })
+            end
         end
         __inputBox.Text = ""
         __inputBox.Size = UDim2.new(0, 0, 0, 61)
@@ -1468,6 +2372,42 @@ __inputBox.FocusLost:Connect(function(enter)
     end
 end)
 
+__player.Chatted:Connect(function(msg)
+    if msg:sub(1, #PREFIX) ~= PREFIX then return end
+    local args = {}
+    for word in msg:gsub(PREFIX, ""):gmatch("%S+") do table.insert(args, word) end
+    if #args == 0 then return end
+    local cmd = args[1]:lower()
+    table.remove(args, 1)
+    local target = args[1] or ""
+    local result = __processCommand(cmd, target, args, msg)
+    if result then
+        WindUI:Notify({ Title = "Chat", Content = result, Duration = 3 })
+    end
+end)
+
+task.spawn(function()
+    while true do
+        if __config.lock.enabled then
+            for _, plr in ipairs(__players:GetPlayers()) do
+                if plr ~= __player and not __config.lock.players[plr.Name] then
+                    __send("skydive "..plr.Name)
+                    task.wait(0.1)
+                    __send("freeze "..plr.Name)
+                    task.wait(0.1)
+                    __send("punish "..plr.Name)
+                    task.wait(0.1)
+                    __send("h "..plr.Name.." not allowed in this server")
+                    __config.lock.players[plr.Name] = true
+                    __saveConfig()
+                end
+            end
+        end
+        task.wait(1)
+    end
+end)
+
+-- ===== GUI (кратко, основные вкладки) =====
 local __window = WindUI:CreateWindow({
     Title = "Kohls+ ("..VERSION..")",
     Author = __player.Name,
@@ -1479,17 +2419,19 @@ local __window = WindUI:CreateWindow({
 
 local __mainTab = __window:Tab({ Title = "Main", Icon = "lucide:home" })
 __mainTab:Toggle({ Title = "Auto Get Perm", Icon = "lucide:refresh-cw", Value = __permEnabled, Callback = function(v) __permEnabled = v; if v then __permLoop() else if __permCoroutine then task.cancel(__permCoroutine) end end; __config.autoPerm = v; __saveConfig() end })
-__mainTab:Toggle({ Title = "Take All Pads", Icon = "lucide:layers", Value = false, Callback = function(v) if v then task.spawn(function() while v do local pads = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Admin") and workspace.Terrain._Game.Admin:FindFirstChild("Pads") if pads then for _, pad in ipairs(pads:GetChildren()) do if pad:IsA("BasePart") or pad:IsA("Model") then if pad.Name ~= __player.Name.."'s admin" then __claimPad(pad) end end end end task.wait(0.1) end end) end end })
 __mainTab:Toggle({ Title = "No Obby Kill (nok)", Icon = "lucide:shield", Value = __nokEnabled, Callback = function(v) __nokEnabled = v; if v then __nokLoop() else if __nokCoroutine then task.cancel(__nokCoroutine) end end; __config.nok = v; __saveConfig() end })
 __mainTab:Toggle({ Title = "Auto God", Icon = "lucide:heart", Value = __autogod, Callback = function(v) __autogod = v; __config.autogod = v; __saveConfig(); WindUI:Notify({Title = v and "Auto-god on" or "Auto-god off"}) end })
-__mainTab:Button({ Title = "Force Respawn", Icon = "lucide:refresh-cw", Callback = function() if __player.Character then __player.Character:BreakJoints() end end })
+__mainTab:Button({ Title = "Move Obby (F3X)", Icon = "lucide:move", Callback = function() WindUI:Notify({Title="Move Obby (F3X)", Content=__moveObbyF3X()}) end })
+__mainTab:Button({ Title = "Enable Inventory", Icon = "lucide:package", Callback = function() WindUI:Notify({Title="Inventory", Content=__enableInventory()}) end })
 __mainTab:Button({ Title = "Regen Pads", Icon = "lucide:rotate-cw", Callback = function() local regen = workspace:FindFirstChild("Terrain") and workspace.Terrain:FindFirstChild("_Game") and workspace.Terrain._Game:FindFirstChild("Admin") and workspace.Terrain._Game.Admin:FindFirstChild("Regen") if regen and regen:FindFirstChild("ClickDetector") then fireclickdetector(regen.ClickDetector); WindUI:Notify({Title="Regen", Content="Pads regenerated"}) else WindUI:Notify({Title="Error", Content="Regen not found"}) end end })
-__mainTab:Button({ Title = "House (teleport)", Icon = "lucide:home", Callback = function() local char = __player.Character if char and char:FindFirstChild("HumanoidRootPart") then char.HumanoidRootPart.CFrame = CFrame.new(-32.38819122314453, 8.229999542236328, 81.14910888671875); WindUI:Notify({Title="House", Content="Teleported"}) end end })
-__mainTab:Button({ Title = "Remove Regen", Icon = "lucide:trash", Callback = function() WindUI:Notify({Title="Remove Regen", Content=__processCommand("removeregen", "")}) end })
-__mainTab:Button({ Title = "Restore Regen", Icon = "lucide:rotate-ccw", Callback = function() WindUI:Notify({Title="Restore Regen", Content=__processCommand("restoreregen", "")}) end })
-__mainTab:Button({ Title = "Rejoin", Icon = "lucide:log-in", Callback = __rejoin })
-__mainTab:Button({ Title = "Server Hop", Icon = "lucide:users", Callback = __serverhop })
+__mainTab:Button({ Title = "House", Icon = "lucide:home", Callback = function() local char = __player.Character if char and char:FindFirstChild("HumanoidRootPart") then char.HumanoidRootPart.CFrame = CFrame.new(-32.38819122314453, 8.229999542236328, 81.14910888671875); WindUI:Notify({Title="House", Content="Teleported"}) end end })
+__mainTab:Button({ Title = "Rejoin", Icon = "lucide:log-in", Callback = function() game:GetService("TeleportService"):Teleport(game.PlaceId, __player) end })
+__mainTab:Button({ Title = "Server Hop", Icon = "lucide:users", Callback = function() local data = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?limit=100") local servers = {} for _, v in ipairs(game:GetService("HttpService"):JSONDecode(data).data) do if v.id ~= game.JobId then table.insert(servers, v.id) end end if #servers > 0 then game:GetService("TeleportService"):TeleportToInstance(game.PlaceId, servers[math.random(#servers)], __player) end end })
+__mainTab:Button({ Title = "Infinity Yield", Icon = "lucide:command", Callback = function() WindUI:Notify({Title="IY", Content="Loaded"}) loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))() end })
+__mainTab:Button({ Title = "Dex++", Icon = "lucide:search", Callback = function() WindUI:Notify({Title="Dex++", Content=__cmdDexPlus()}) end })
+__mainTab:Button({ Title = "Equip Tools", Icon = "lucide:package", Callback = function() WindUI:Notify({Title="Equip", Content=__cmdEquip()}) end })
 
+-- Players Tab
 local __playersTab = __window:Tab({ Title = "Players", Icon = "lucide:users" })
 local function __createPlayerList(parent)
     local scroll = Instance.new("ScrollingFrame")
@@ -1603,12 +2545,24 @@ local function __createPlayerList(parent)
 end
 __createPlayerList(__playersTab.UIElements.ContainerFrame)
 
+-- Anti-Abuse Tab
 local __antiTab = __window:Tab({ Title = "Anti-Abuse", Icon = "lucide:shield" })
+__antiTab:Paragraph({ Title = "Protected Players", Desc = "List of players under anti-abuse protection" })
+local __protList = Instance.new("TextLabel")
+__protList.Size = UDim2.new(1, 0, 0, 30)
+__protList.BackgroundTransparency = 1
+__protList.Text = table.concat(__config.protectedPlayers, ", ")
+__protList.TextColor3 = Color3.new(1,1,1)
+__protList.Font = "GothamMedium"
+__protList.TextSize = 14
+__protList.Parent = __antiTab.UIElements.ContainerFrame
+
 local __antiKeys = {"kill","jail","fling","blind","spin","punish","dog","ff","ban","message","stun","clone","speed","freeze"}
 for _, key in ipairs(__antiKeys) do
     __antiTab:Toggle({ Title = "Anti "..key, Icon = "lucide:shield", Value = __anti[key] or false, Callback = function(v) __anti[key] = v; __config.anti = __anti; __saveConfig() end })
 end
 
+-- Friends Tab
 local __friendsTab = __window:Tab({ Title = "Friends (Anti-Abuse)", Icon = "lucide:users" })
 __friendsTab:Paragraph({ Title = "Friends List", Desc = "Anti-abuse does not affect friends." })
 local __friendsContainer = Instance.new("ScrollingFrame")
@@ -1670,18 +2624,15 @@ end
 __refreshFriends()
 __friendsTab:Button({ Title = "Refresh List", Icon = "lucide:refresh-cw", Callback = __refreshFriends })
 
+-- Commands Tab
 local __commandsTab = __window:Tab({ Title = "Commands", Icon = "lucide:terminal" })
 __commandsTab:Paragraph({ Title = "Command List", Desc = "Use prefix '"..PREFIX.."' in chat." })
 local __cmdList = {
-    "lagkick <player> - give lag tool (crashes when used)",
     "folk - activate folk mode",
     "mydog <player> - turn player into your dog",
     "fpunish <player> - freeze + invisible",
-    "ffkick <player> - spam skydive, freeze, invisible, ff, f3x box",
-    "pmkick <player> - freeze, name, dog, rainbowify, pm spam",
-    "trap <player> [time] - trap player with item",
-    "clearparts - remove all player-made parts",
-    "checkperm <player> - check gamepass",
+    "moveobby_f3x - move obby via F3X",
+    "trap <player> - trap player with gear",
     "ban/unban - ban/unban player",
     "gearban/ungearban - gearban control",
     "serverlock/unlock - lock server",
@@ -1695,18 +2646,70 @@ local __cmdList = {
     "house - teleport",
     "clearlogs - clear logs",
     "mtool - local move tool",
-    "mobby/robby - move/restore obby",
-    "mregen/rregen - move/restore regen",
-    "mpads/rpads - move/restore pads",
     "rejoin/rj - rejoin",
     "serverhop/shop/sh - hop server",
-    "spam/unspam - spam messages"
+    "spam/unspam - spam messages",
+    "r15 - enable R15 mode",
+    "r6 - disable R15",
+    "troll - troll effects",
+    "fixfilter - reset chat filter",
+    "doll <player> - rename and speed 0",
+    "protect/unprotect <player> - anti-abuse control",
+    "sunset - apply sunset",
+    "fogend <num> - set fog end",
+    "ambient <r> <g> <b> - set ambient color",
+    "time <0-24> - set time",
+    "enableinventory - unlock inventory",
+    "iy - load Infinity Yield",
+    "dex++ - load Dex Explorer Reforged",
+    "equip - equip all tools",
+    "forcerespawn - respawn yourself",
+    "fixvelocity - reset all velocities",
+    "breakbaseplate - break baseplate",
+    "destroybaseplate - destroy baseplate",
+    "bypassmessage <text> - send filtered message",
+    "deletetool - create delete tool",
+    "rainbowfog <range> - rainbow fog",
+    "rainbowbaseplate - start rainbow baseplate",
+    "unrainbowbaseplate - stop rainbow baseplate",
+    "attachtool - create attach tool",
+    "breakplayer <player> - break player",
+    "antiname - anti-name protection",
+    "antigrav - anti-gravity",
+    "antiskydive - anti-skydive",
+    "antivoid - anti-void",
+    "party <amount> - spawn party items",
+    "antikick - anti-kick protection",
+    "spawnzombies <amount> - spawn zombies",
+    "nuke <amount> <range> - nuke",
+    "naked <player> - naked player",
+    "nude <player> - nude player",
+    "femify <player> - femify player",
+    "furrify <player> - furrify player",
+    "oldholdplayer <player> - old hold player",
+    "holdplayer <player> - hold player",
+    "pcolour - start rainbow painting",
+    "black/white/red/blue/green/orange/yellow/brown/purple/pink - paint all",
+    "unpaint - remove paint bucket",
+    "deletetoolivory - create ivory delete tool",
+    "run <script> - execute lua script",
+    "gayrate <player> - get gay rate",
+    "icetower <player> - ice tower",
+    "rail <player> - railgun spam",
+    "spike - spike attack",
+    "pban/unpban <player> - pad ban",
+    "timeout <player> <time> - timeout player",
+    "fixcam <player> - fix broken camera",
+    "breakcam <player> - break camera",
+    "noobify <player> - noobify player",
+    "dummy/testdummy - create dummy"
 }
 for _, info in ipairs(__cmdList) do
     local c = info:match("^%S+")
     __commandsTab:Paragraph({ Title = PREFIX..c, Desc = info:gsub("^%S+%s*", "") })
 end
 
+-- Info Tab
 local __infoTab = __window:Tab({ Title = "Info", Icon = "lucide:info" })
 local infoContainer = Instance.new("Frame")
 infoContainer.Size = UDim2.new(1, 0, 1, 0)
@@ -1748,7 +2751,7 @@ rank.Size = UDim2.new(1, 0, 0, 25)
 rank.Position = UDim2.new(0, 0, 0, 190)
 rank.BackgroundTransparency = 1
 local rankText = "User"
-if __player.Name == "nowhudhejeir" or __player.Name == "EgorYa900" then rankText = "Owner" end
+if __player.Name == "nowhudhejeir" or __player.Name == "EgorYa900" or __player.Name == "PaulTheKinggg" then rankText = "Owner" end
 rank.Text = "Rank: "..rankText
 rank.TextColor3 = Color3.new(1,1,1)
 rank.TextSize = 18
@@ -1789,11 +2792,12 @@ ver.Font = "GothamMedium"
 ver.TextXAlignment = "Center"
 ver.Parent = infoContainer
 
+-- Settings Tab
 local __settingsTab = __window:Tab({ Title = "Settings", Icon = "lucide:settings" })
 __settingsTab:Dropdown({ Title = "Theme", Values = {"Dark","Light","Rose","Plant","Red","Indigo","Sky","Violet","Amber","Emerald","Midnight","Crimson","MonokaiPro","CottonCandy","Mellowsi","Rainbow"}, Value = __config.theme, Callback = function(v) __config.theme = v; __saveConfig(); WindUI:SetTheme(v) end })
 
 if not __load("changelog_version") or __load("changelog_version") ~= VERSION then
-    WindUI:Notify({Title="Changelog", Content="v5.0: Fixed anti-abuse (jail works), removed anti-sit, added lagkick with custom tool, fixed F3X and trap", Duration=15})
+    WindUI:Notify({Title="Changelog", Content="v8.7: Добавлены все новые команды: pcolour, black, white, red, blue, green, orange, yellow, brown, purple, pink, unpaint, deletetoolivory, run, gayrate, icetower, rail, spike, pban, unpban, timeout, fixcam, breakcam, noobify, dummy, testdummy, а также обработчики load/1-4, jesus, globalrtx, batman, Furry Hammer", Duration=15})
     __save("changelog_version", VERSION)
 end
 
