@@ -11,6 +11,9 @@ local Players = game:GetService("Players")
 local plr = Players.LocalPlayer
 local prefix = "."
 
+local TS = game:GetService("TeleportService")
+local HS = game:GetService("HttpService")
+
 local ChatService = game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents")
 local __sayRequest = ChatService:WaitForChild("SayMessageRequest")
 
@@ -123,6 +126,7 @@ local antifling = false
 local antiblind = false
 local guis = false
 local antisize = false
+local antiBanHammer = false
 local antikillRunning = false
 local antiflingRunning = false
 local antijailRunning = false
@@ -282,6 +286,23 @@ spawn(function()
             local confirm = plr.PlayerGui:FindFirstChild("ConfirmationPrompt")
             if confirm then confirm:Destroy() end
         end
+        if antiBanHammer then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= plr and p.Backpack and p.Backpack:FindFirstChild("BanHammer") then
+                    local leaderstats = p:FindFirstChild("leaderstats")
+                    if leaderstats then
+                        local score = leaderstats:FindFirstChild("Score")
+                        if score then
+                            local val = score.Value
+                            if (typeof(val) == "number" and val > 20000) or (typeof(val) == "string" and val:lower() == "private") then
+                                tchat("ungear " .. p.Name)
+                                tchat("h " .. p.Name .. " NICE TRYYYY")
+                            end
+                        end
+                    end
+                end
+            end
+        end
     end
 end)
 
@@ -308,7 +329,7 @@ end)
 local __commandsTab = Window:Tab({ Title = "Commands", Icon = "lucide:terminal" })
 __commandsTab:Paragraph({
     Title = "Command List",
-    Desc = "If you are on PC press ] to open command bar\nIf you are on mobile tap the bottom right corner\n\nAvailable commands:\nban <player>\nfpunish <player>\nkick <player>\nkid <player>\npban <player>\nunpban <player>\nspam <message>\nunspam\nclearlogs\nfixfilter\nbypassmessage <message>\ncage <player>\nloopcage <player>\nunloopcage <player>\ngearbl <player>\nungearbl <player>\nnokill\nunnokill\nfixvel\nloadregen <distance>\nregen\nfixregen\ntptoregen\nrmoveregen\ndeletetool\nmoveobby\nrmobby\njerk\nbang <player>\nunbang\nping"
+    Desc = "If you are on PC press ] to open command bar\nIf you are on mobile tap the bottom right corner\n\nAvailable commands:\nban <player>\nfpunish <player>\nkick <player>\nkid <player>\npban <player>\nunpban <player>\nspam <message>\nunspam\nclearlogs\nfixfilter\nbypassmessage <message>\ncage <player>\nloopcage <player>\nunloopcage <player>\ngearbl <player>\nungearbl <player>\nnokill\nunnokill\nfixvel\nloadregen <distance>\nregen\nfixregen\ntptoregen\nrmoveregen\ndeletetool\nmoveobby\nrmobby\njerk\nbang <player>\nunbang\nping\nrejoin (rj)\nserverhop (shop)"
 })
 
 local __mainTab = Window:Tab({ Title = "Main", Icon = "home" })
@@ -373,6 +394,7 @@ __protectTab:Toggle({ Title = "Anti Grav", Value = Loops.antigrav, Callback = fu
 __protectTab:Toggle({ Title = "Anti Name", Value = Loops.antiname, Callback = function(v) Loops.antiname = v; if v then spawn(function() while Loops.antiname do pcall(function() local chr = plr.Character; if chr then local m = chr:FindFirstChildOfClass("Model"); if m and #m:GetChildren() == 2 then tchat("unname me"); m:Destroy() end end end) game:GetService("RunService").RenderStepped:Wait() end end) end end })
 __protectTab:Toggle({ Title = "Anti Tripmine", Value = Loops.antitripmine, Callback = function(v) Loops.antitripmine = v; if v then spawn(function() while Loops.antitripmine do pcall(function() local tm = workspace:FindFirstChild("SubspaceTripmine"); if tm then tm:Destroy(); tchat("clr") end end) game:GetService("RunService").RenderStepped:Wait() end end) end end })
 __protectTab:Toggle({ Title = "Anti Eggbomb", Value = Loops.antieggbomb, Callback = function(v) Loops.antieggbomb = v; if v then spawn(function() while Loops.antieggbomb do pcall(function() local eb = workspace:FindFirstChild("EggBomb"); if eb then eb:Destroy(); tchat("clr") end end) game:GetService("RunService").RenderStepped:Wait() end end) end end })
+__protectTab:Toggle({ Title = "Anti BanHammer", Value = antiBanHammer, Callback = function(v) antiBanHammer = v end })
 
 spawn(function()
     local UI = Instance.new("ScreenGui")
@@ -445,6 +467,7 @@ spawn(function()
             local text = holyshidt11.Text
             if text ~= "" then
                 executeCommand(text)
+                chat(text)
             end
         end
     end)
@@ -812,7 +835,7 @@ end)
 local function transferHotPotato(player)
     for _ = 1, 5 do
         tchat("gear me 000000000000000000000000000000000000000000000000000000000000025741198")
-        task.wait(0.5)
+        task.wait(1)
         if plr.Backpack:FindFirstChild("HotPotato") then
             local potato = plr.Backpack.HotPotato
             potato.Parent = plr.Character
@@ -847,12 +870,14 @@ addcommand("kick", "", function(args)
         Loops.antikick = false
         spawn(function()
             tchat("size " .. tgt.Name .. " nan")
-            task.wait(1)
+            task.wait(0.7)
             tchat("freeze " .. tgt.Name)
             transferHotPotato(tgt)
+            task.wait(2)
+            tchat("unsize "..tgt.Name)
             local displayName = tgt.DisplayName ~= tgt.Name and tgt.DisplayName or tgt.Name
-            tchat("name "..tgt.Name.." [Kohls+]\nKICKING\n"..displayName)
             tchat("rainbowify "..tgt.Name)
+            tchat("name "..tgt.Name.." [Kohls+]\nKICKING...\n"..displayName)
             Loops.antikick = prev
         end)
     end
@@ -976,3 +1001,32 @@ addcommand("unbang", "", function()
     if bangAnim then bangAnim:Destroy() bangAnim = nil end
     if bangLoop then bangLoop:Disconnect() bangLoop = nil end
 end)
+
+addcommand("rejoin", "", function()
+    TS:TeleportToPlaceInstance(game.PlaceId, game.JobId, plr)
+end)
+addcommand("rj", "", function() commands["rejoin"]({}) end)
+
+addcommand("serverhop", "", function()
+    local success, result = pcall(function()
+        return game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?limit=100")
+    end)
+    if not success then
+        WindUI:Notify({Title="kohls+", Content="Failed to fetch servers", Duration=3})
+        return
+    end
+    local servers = HS:JSONDecode(result)
+    local goodServers = {}
+    for _, server in ipairs(servers.data) do
+        if server.playing < server.maxPlayers then
+            table.insert(goodServers, server)
+        end
+    end
+    if #goodServers > 0 then
+        local targetServer = goodServers[math.random(1, #goodServers)]
+        TS:TeleportToPlaceInstance(game.PlaceId, targetServer.id, plr)
+    else
+        WindUI:Notify({Title="kohls+", Content="No available servers", Duration=3})
+    end
+end)
+addcommand("shop", "", function() commands["serverhop"]({}) end)
