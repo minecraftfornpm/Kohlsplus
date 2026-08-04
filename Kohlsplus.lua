@@ -66,7 +66,9 @@ end
 if isfile("Blacklisted.txt") then
     for _, name in ipairs(readfile("Blacklisted.txt"):split("\n")) do if name ~= "" then table.insert(blacklisted, name) end end
 else
-    writefile("Blacklisted.txt", "agspureiam\n"); table.insert(blacklisted, "agspureiam")
+    writefile("Blacklisted.txt", "agspureiam\nAZLANPLATTERS\n")
+    table.insert(blacklisted, "agspureiam")
+    table.insert(blacklisted, "AZLANPLATTERS")
 end
 
 local Terrain = workspace:FindFirstChild("Terrain") or workspace:FindFirstChild("terrain")
@@ -100,6 +102,7 @@ local Loops = {
     antieggbomb = false
 }
 local cageLoops = {}
+local banLoops = {}
 local spamConnection = nil
 local autoGod = false
 local permNotified = false
@@ -185,7 +188,7 @@ plr.CharacterAdded:Connect(function(chr)
 end)
 
 spawn(function()
-    while true do
+    while task.wait(0.1) do
         if Loops.antikick then
             pcall(function()
                 local chr = plr.Character
@@ -201,14 +204,8 @@ spawn(function()
         if Loops.antiname then pcall(function() local chr = plr.Character if chr then local m = chr:FindFirstChildOfClass("Model") if m and #m:GetChildren() == 2 then tchat("unname me") m:Destroy() end end end) end
         if Loops.antitripmine then pcall(function() local tm = workspace:FindFirstChild("SubspaceTripmine") if tm then tm:Destroy() tchat("clr") end end) end
         if Loops.antieggbomb then pcall(function() local eb = workspace:FindFirstChild("EggBomb") if eb then eb:Destroy() tchat("clr") end end) end
-        game:GetService("RunService").RenderStepped:Wait()
-    end
-end)
-
-spawn(function()
-    while task.wait(0.5) do
         if _G_antifreeze then for _, v in ipairs(Players:GetPlayers()) do if v ~= plr and v.Character and v.Character:FindFirstChild("ice") then tchat("thaw " .. v.Name) end end end
-        if antisize and plr.Character and plr.Character:FindFirstChild("Torso") and plr.Character.Torso.Size.Y ~= 2 then tchat("unsize me") end
+        if antisize and plr.Character and plr.Character:FindFirstChild("Torso") and plr.Character.Torso.Size.Y ~= 2 then tchat("size me 2") end
         if antiblind then
             local blind = plr.PlayerGui:FindFirstChild("EFFECTGUIBLIND") if blind then blind:Destroy() end
             local confirm = plr.PlayerGui:FindFirstChild("ConfirmationPrompt") if confirm then confirm:Destroy() end
@@ -231,6 +228,34 @@ end)
 plr.PlayerGui.ChildAdded:Connect(function(child)
     if antiblind then if child.Name == "EFFECTGUIBLIND" or child.Name == "ConfirmationPrompt" then child:Destroy() end end
     if guis then if child.Name ~= "ScrollGui" and child.Name ~= "CommandsGui" then child:Destroy() end end
+end)
+
+local function startBanLoop(tgt)
+    if banLoops[tgt.Name] then return end
+    banLoops[tgt.Name] = true
+    spawn(function()
+        while banLoops[tgt.Name] do
+            if tgt.Character and tgt.Character:FindFirstChild("HumanoidRootPart") then
+                chat("bring " .. tgt.Name)
+                task.wait(0.5)
+                executeCommand("kick " .. tgt.Name)
+            end
+            tgt.CharacterAdded:Wait()
+            task.wait(0.5)
+        end
+    end)
+end
+
+for _, p in ipairs(Players:GetPlayers()) do
+    if table.find(blacklisted, p.Name) and p ~= plr then
+        startBanLoop(p)
+    end
+end
+
+Players.PlayerAdded:Connect(function(p)
+    if table.find(blacklisted, p.Name) and p ~= plr then
+        startBanLoop(p)
+    end
 end)
 
 local __commandsTab = Window:Tab({ Title = "Commands", Icon = "lucide:terminal" })
@@ -259,16 +284,16 @@ local __protectTab = Window:Tab({ Title = "Protection", Icon = "shield" })
 __protectTab:Toggle({ Title = "Anti Punish", Value = false, Callback = function(v) antipunish = v end })
 __protectTab:Toggle({ Title = "Anti Jail", Value = false, Callback = function(v)
     antijail = v
-    if v and not antijailRunning then antijailRunning = true spawn(function() while antijail do if Folder and Folder:FindFirstChild(myjail) then Folder[myjail]:Destroy() tchat("unjail me") end game:GetService("RunService").RenderStepped:Wait() end antijailRunning = false end) end
+    if v and not antijailRunning then antijailRunning = true spawn(function() while antijail do if Folder and Folder:FindFirstChild(myjail) then Folder[myjail]:Destroy() tchat("unjail me") end task.wait(0.1) end antijailRunning = false end) end
 end })
 __protectTab:Toggle({ Title = "Anti Kill", Value = false, Callback = function(v)
     antikill = v
-    if v and not antikillRunning then antikillRunning = true spawn(function() while antikill do local chr = plr.Character if chr and chr:FindFirstChild("Humanoid") and chr.Humanoid.Health <= 0 then tchat("reset me") task.wait(0.05) end game:GetService("RunService").RenderStepped:Wait() end antikillRunning = false end) end
+    if v and not antikillRunning then antikillRunning = true spawn(function() while antikill do local chr = plr.Character if chr and chr:FindFirstChild("Humanoid") and chr.Humanoid.Health <= 0 then tchat("reset me") task.wait(0.05) end task.wait(0.1) end antikillRunning = false end) end
 end })
 __protectTab:Toggle({ Title = "Anti Freeze", Value = false, Callback = function(v) _G_antifreeze = v end })
 __protectTab:Toggle({ Title = "Anti Fling/Speed", Value = false, Callback = function(v)
     antifling = v
-    if v and not antiflingRunning then antiflingRunning = true spawn(function() while antifling do local chr = plr.Character if chr and chr:FindFirstChild("HumanoidRootPart") then local r = chr.HumanoidRootPart local vel = r.Velocity if math.abs(vel.X) > 150 or math.abs(vel.Z) > 150 then r.Velocity = Vector3.new(0, vel.Y, 0) end end game:GetService("RunService").RenderStepped:Wait() end antiflingRunning = false end) end
+    if v and not antiflingRunning then antiflingRunning = true spawn(function() while antifling do local chr = plr.Character if chr and chr:FindFirstChild("HumanoidRootPart") then local r = chr.HumanoidRootPart local vel = r.Velocity if math.abs(vel.X) > 150 or math.abs(vel.Z) > 150 then r.Velocity = Vector3.new(0, vel.Y, 0) end end task.wait(0.1) end antiflingRunning = false end) end
 end })
 __protectTab:Toggle({ Title = "Anti Blind", Value = false, Callback = function(v) antiblind = v end })
 __protectTab:Toggle({ Title = "Anti Screen Guis", Value = false, Callback = function(v) guis = v end })
@@ -306,28 +331,25 @@ spawn(function()
     end)
 end)
 
--- BL (ban) – только bring + kick, файл blacklist
 addcommand("bl", "", function(args)
     local target = args[1] if not target then return end
     for _, tgt in pairs(GetPlayers(target)) do
         if isWhitelisted(tgt) then WindUI:Notify({Title="kohls+", Content=tgt.Name.." is whitelisted, you can't ban him", Duration=4}) return end
-        appendfile("Blacklisted.txt", tgt.Name.."\n")
-        table.insert(blacklisted, tgt.Name)
-        chat("bring " .. tgt.Name)
-        task.wait(0.5)
-        executeCommand("kick " .. tgt.Name)
+        if not table.find(blacklisted, tgt.Name) then
+            appendfile("Blacklisted.txt", tgt.Name.."\n")
+            table.insert(blacklisted, tgt.Name)
+        end
+        startBanLoop(tgt)
     end
 end)
 addcommand("ban", "", function(args) commands["bl"](args) end)
 
--- UNBAN (unbl) – удаляет из файла и из таблицы
 addcommand("unban", "", function(args)
     local target = args[1] if not target then return end
     for _, tgt in pairs(GetPlayers(target)) do
+        banLoops[tgt.Name] = false
         for i = #blacklisted, 1, -1 do
-            if blacklisted[i] == tgt.Name then
-                table.remove(blacklisted, i)
-            end
+            if blacklisted[i] == tgt.Name then table.remove(blacklisted, i) end
         end
         local content = readfile("Blacklisted.txt")
         local newContent = content:gsub(tgt.Name .. "\n", "")
