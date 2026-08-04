@@ -152,6 +152,69 @@ local function __permLoop()
     end)
 end
 
+plr.Backpack.ChildAdded:Connect(function(child)
+    if Loops.antikick and child:IsA("Tool") and not safeTools[child.Name] then
+        child:Destroy()
+        tchat("removetools me")
+    end
+end)
+plr.CharacterAdded:Connect(function(chr)
+    chr.ChildAdded:Connect(function(child)
+        if Loops.antikick and child:IsA("Tool") and not safeTools[child.Name] then
+            child:Destroy()
+            tchat("removetools me")
+        end
+    end)
+end)
+
+local scoreConnections = {}
+for _, p in ipairs(Players:GetPlayers()) do
+    if p ~= plr then
+        local leaderstats = p:FindFirstChild("leaderstats")
+        if leaderstats then
+            local score = leaderstats:FindFirstChild("Score")
+            if score then
+                local conn = score:GetPropertyChangedSignal("Value"):Connect(function()
+                    if antiBanHammer and p.Backpack and p.Backpack:FindFirstChild("BanHammer") then
+                        local val = score.Value
+                        if (typeof(val) == "number" and val > 20000) or (typeof(val) == "string" and val:lower() == "private") then
+                            tchat("ungear " .. p.Name)
+                            tchat("h " .. p.Name .. " NICE TRYYYY")
+                        end
+                    end
+                end)
+                scoreConnections[p] = conn
+            end
+        end
+    end
+end
+Players.PlayerAdded:Connect(function(p)
+    if p ~= plr then
+        local leaderstats = p:WaitForChild("leaderstats", 10)
+        if leaderstats then
+            local score = leaderstats:WaitForChild("Score", 10)
+            if score then
+                local conn = score:GetPropertyChangedSignal("Value"):Connect(function()
+                    if antiBanHammer and p.Backpack and p.Backpack:FindFirstChild("BanHammer") then
+                        local val = score.Value
+                        if (typeof(val) == "number" and val > 20000) or (typeof(val) == "string" and val:lower() == "private") then
+                            tchat("ungear " .. p.Name)
+                            tchat("h " .. p.Name .. " NICE TRYYYY")
+                        end
+                    end
+                end)
+                scoreConnections[p] = conn
+            end
+        end
+    end
+end)
+Players.PlayerRemoving:Connect(function(p)
+    if scoreConnections[p] then
+        scoreConnections[p]:Disconnect()
+        scoreConnections[p] = nil
+    end
+end)
+
 plr.CharacterAdded:Connect(function(chr)
     if autoGod then tchat("god me") tchat("health me inf") tchat("loopheal me") end
     chr.ChildAdded:Connect(function(ch)
@@ -198,22 +261,6 @@ spawn(function()
         if antiblind then
             local blind = plr.PlayerGui:FindFirstChild("EFFECTGUIBLIND") if blind then blind:Destroy() end
             local confirm = plr.PlayerGui:FindFirstChild("ConfirmationPrompt") if confirm then confirm:Destroy() end
-        end
-        if antiBanHammer then
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= plr and p.Backpack and p.Backpack:FindFirstChild("BanHammer") then
-                    local leaderstats = p:FindFirstChild("leaderstats")
-                    if leaderstats then
-                        local score = leaderstats:FindFirstChild("Score")
-                        if score then
-                            local val = score.Value
-                            if (typeof(val) == "number" and val > 20000) or (typeof(val) == "string" and val:lower() == "private") then
-                                tchat("ungear " .. p.Name) tchat("h " .. p.Name .. " NICE TRYYYY")
-                            end
-                        end
-                    end
-                end
-            end
         end
     end
 end)
@@ -360,11 +407,12 @@ addcommand("rmoveregen", "", function() local regen = Admin and Admin:FindFirstC
 addcommand("deletetool", "", function() local btool = Instance.new("Tool", plr.Backpack) local SelectionBox = Instance.new("SelectionBox", workspace) local hammer = Instance.new("Part") hammer.Parent = btool hammer.Name = "Handle" hammer.CanCollide = false hammer.Anchored = false SelectionBox.Name = "oof" SelectionBox.LineThickness = 0.05 SelectionBox.Adornee = nil SelectionBox.Color3 = Color3.fromRGB(0,0,255) SelectionBox.Visible = false btool.Name = "Delete Tool" btool.RequiresHandle = false local IsEquipped = false local Mouse = plr:GetMouse() btool.Equipped:Connect(function() IsEquipped = true SelectionBox.Visible = true SelectionBox.Adornee = nil end) btool.Unequipped:Connect(function() IsEquipped = false SelectionBox.Visible = false SelectionBox.Adornee = nil end) btool.Activated:Connect(function() if IsEquipped then btool.Parent = game.Chat local ex = Instance.new("Explosion") ex.BlastRadius = 0 ex.Position = Mouse.Target.Position ex.Parent = workspace local prevcfarchive = plr.Character.HumanoidRootPart.CFrame local target = Mouse.Target local function movepart() local cf = plr.Character.HumanoidRootPart local looping = true spawn(function() while true do game:GetService("RunService").Heartbeat:Wait() pcall(function() plr.Character.Humanoid:ChangeState(11) cf.CFrame = target.CFrame * CFrame.new(-(target.Size.X/2)-(plr.Character.Torso.Size.X/2),0,0) end) if not looping then break end end end) spawn(function() while looping do wait(0.1) tchat("unpunish me") end end) wait(0.25) looping = false end movepart() repeat wait() until plr.Character.Torso:FindFirstChild("Weld") tchat("skydive me") wait(0.1) tchat("respawn me") wait(0.25) game.Chat["Delete Tool"].Parent = plr.Backpack plr.Character.HumanoidRootPart.CFrame = prevcfarchive spawn(function() wait(3) if game.Chat:FindFirstChild("Delete Tool") then game.Chat["Delete Tool"]:Destroy() end end) end end) WindUI:Notify({Title="kohls+", Content="Delete Tool added to backpack", Duration=2}) end)
 
 local function transferHotPotato(player)
-    for _ = 1, 2 do
+    for _ = 1, 3 do
         tchat("gear me 000000000000000000000000000000000000000000000000000000000000025741198")
-        task.wait(0.2)
         if plr.Backpack:FindFirstChild("HotPotato") then
-            local potato = plr.Backpack.HotPotato potato.Parent = plr.Character potato:Activate()
+            local potato = plr.Backpack.HotPotato
+            potato.Parent = plr.Character
+            potato:Activate()
             spawn(function()
                 while potato.Parent == plr.Character do
                     task.wait()
@@ -375,7 +423,6 @@ local function transferHotPotato(player)
                         firetouchinterest(potato:WaitForChild("Handle"), player.Character.Torso, 1)
                     end)
                 end
-                local toolch toolch = workspace.ChildAdded:Connect(function(Child) if Child == potato then tchat("clr") toolch:Disconnect() end end)
             end)
         end
     end
@@ -385,19 +432,14 @@ addcommand("kick", "", function(args)
     local target = args[1] if not target then return end
     for _, tgt in pairs(GetPlayers(target)) do
         if isWhitelisted(tgt) then WindUI:Notify({Title="Kohls+", Content=tgt.Name.." is whitelisted, you can't touch him", Duration=3}) return end
-        local prev = Loops.antikick Loops.antikick = false
+        local prev = Loops.antikick
+        Loops.antikick = false
         spawn(function()
-            tchat("unff me")
-            tchat("blind "..tgt.Name)
-            tchat("ff me")
-            tchat("ff "..tgt.Name)
             tchat("size " .. tgt.Name .. " nan")
+            task.wait(0.2)
             tchat("freeze " .. tgt.Name)
             transferHotPotato(tgt)
-            tchat("unsize "..tgt.Name)
-            local displayName = tgt.DisplayName ~= tgt.Name and tgt.DisplayName or tgt.Name
-            tchat("name "..tgt.Name.." [Kohls+]\nKICKING...\n"..displayName)
-            tchat("dog "..tgt.Name)
+            task.wait(1.5)
             Loops.antikick = prev
         end)
     end
