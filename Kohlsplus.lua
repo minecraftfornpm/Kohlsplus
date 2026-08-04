@@ -49,7 +49,6 @@ function GetPlayers(target)
 end
 
 local blacklisted = {}
-local padbanned = {}
 local whitelist = {
     "Simonko_30", "EgorYa900", "nowhudhejeir", "2spinthelegend",
     "DVZYNFFVJNG", "2spintheIegend", "monssro90", "FFVRVGV",
@@ -167,54 +166,6 @@ plr.CharacterAdded:Connect(function(chr)
     end)
 end)
 
-local scoreConnections = {}
-for _, p in ipairs(Players:GetPlayers()) do
-    if p ~= plr then
-        local leaderstats = p:FindFirstChild("leaderstats")
-        if leaderstats then
-            local score = leaderstats:FindFirstChild("Score")
-            if score then
-                local conn = score:GetPropertyChangedSignal("Value"):Connect(function()
-                    if antiBanHammer and p.Backpack and p.Backpack:FindFirstChild("BanHammer") then
-                        local val = score.Value
-                        if (typeof(val) == "number" and val > 20000) or (typeof(val) == "string" and val:lower() == "private") then
-                            tchat("ungear " .. p.Name)
-                            tchat("h " .. p.Name .. " NICE TRYYYY")
-                        end
-                    end
-                end)
-                scoreConnections[p] = conn
-            end
-        end
-    end
-end
-Players.PlayerAdded:Connect(function(p)
-    if p ~= plr then
-        local leaderstats = p:WaitForChild("leaderstats", 10)
-        if leaderstats then
-            local score = leaderstats:WaitForChild("Score", 10)
-            if score then
-                local conn = score:GetPropertyChangedSignal("Value"):Connect(function()
-                    if antiBanHammer and p.Backpack and p.Backpack:FindFirstChild("BanHammer") then
-                        local val = score.Value
-                        if (typeof(val) == "number" and val > 20000) or (typeof(val) == "string" and val:lower() == "private") then
-                            tchat("ungear " .. p.Name)
-                            tchat("h " .. p.Name .. " NICE TRYYYY")
-                        end
-                    end
-                end)
-                scoreConnections[p] = conn
-            end
-        end
-    end
-end)
-Players.PlayerRemoving:Connect(function(p)
-    if scoreConnections[p] then
-        scoreConnections[p]:Disconnect()
-        scoreConnections[p] = nil
-    end
-end)
-
 plr.CharacterAdded:Connect(function(chr)
     if autoGod then tchat("god me") tchat("health me inf") tchat("loopheal me") end
     chr.ChildAdded:Connect(function(ch)
@@ -262,6 +213,14 @@ spawn(function()
             local blind = plr.PlayerGui:FindFirstChild("EFFECTGUIBLIND") if blind then blind:Destroy() end
             local confirm = plr.PlayerGui:FindFirstChild("ConfirmationPrompt") if confirm then confirm:Destroy() end
         end
+        if antiBanHammer then
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= plr and p.Backpack and p.Backpack:FindFirstChild("BanHammer") then
+                    tchat("ungear " .. p.Name)
+                    tchat("h " .. p.Name .. " NICE TRYYYY")
+                end
+            end
+        end
     end
 end)
 
@@ -277,7 +236,7 @@ end)
 local __commandsTab = Window:Tab({ Title = "Commands", Icon = "lucide:terminal" })
 __commandsTab:Paragraph({
     Title = "Commands 1",
-    Desc = "ban <player>\nfpunish <player>\nkick <player>\nkid <player>\npban <player>\nunpban <player>\nspam <message>\nunspam\nclearlogs\nfixfilter\nbypassmessage <message>\ncage <player>\nloopcage <player>\nunloopcage <player>\ngearbl <player>\nungearbl <player>\nnokill\nunnokill"
+    Desc = "ban <player>\nunban <player>\nfpunish <player>\nkick <player>\nkid <player>\nspam <message>\nunspam\nclearlogs\nfixfilter\nbypassmessage <message>\ncage <player>\nloopcage <player>\nunloopcage <player>\ngearbl <player>\nungearbl <player>\nnokill\nunnokill"
 })
 __commandsTab:Paragraph({
     Title = "Commands 2",
@@ -347,23 +306,43 @@ spawn(function()
     end)
 end)
 
-addcommand("pban", "", function(args) local target = args[1] if not target then return end for _, pl in pairs(GetPlayers(target)) do if not table.find(padbanned, pl.Name) then table.insert(padbanned, pl.Name) WindUI:Notify({Title="kohls+", Content=pl.Name.." pad-banned", Duration=3}) end end end)
-addcommand("unpban", "", function(args) local target = args[1] if not target then return end for _, pl in pairs(GetPlayers(target)) do for i = #padbanned, 1, -1 do if padbanned[i] == pl.Name then table.remove(padbanned, i) WindUI:Notify({Title="kohls+", Content=pl.Name.." un-pad-banned", Duration=3}) end end end end)
+-- BL (ban) – только bring + kick, файл blacklist
 addcommand("bl", "", function(args)
     local target = args[1] if not target then return end
     for _, tgt in pairs(GetPlayers(target)) do
         if isWhitelisted(tgt) then WindUI:Notify({Title="kohls+", Content=tgt.Name.." is whitelisted, you can't ban him", Duration=4}) return end
-        if table.find(padbanned, tgt.Name) then WindUI:Notify({Title="kohls+", Content=tgt.Name.." is already pad-banned", Duration=3}) return end
-        appendfile("Blacklisted.txt", tgt.Name.."\n") table.insert(blacklisted, tgt.Name) tchat("h/"..tgt.Name.."/Good job, you've earned a spot in my blacklist") tchat("blind "..tgt.Name) tchat("skydive "..tgt.Name) tchat("skydive "..tgt.Name) tchat("skydive "..tgt.Name) tchat("skydive "..tgt.Name) task.wait(1) tchat("freeze "..tgt.Name) tchat("invisible "..tgt.Name) tchat("punish "..tgt.Name)
+        appendfile("Blacklisted.txt", tgt.Name.."\n")
+        table.insert(blacklisted, tgt.Name)
+        chat("bring " .. tgt.Name)
+        task.wait(0.5)
+        executeCommand("kick " .. tgt.Name)
     end
 end)
 addcommand("ban", "", function(args) commands["bl"](args) end)
+
+-- UNBAN (unbl) – удаляет из файла и из таблицы
+addcommand("unban", "", function(args)
+    local target = args[1] if not target then return end
+    for _, tgt in pairs(GetPlayers(target)) do
+        for i = #blacklisted, 1, -1 do
+            if blacklisted[i] == tgt.Name then
+                table.remove(blacklisted, i)
+            end
+        end
+        local content = readfile("Blacklisted.txt")
+        local newContent = content:gsub(tgt.Name .. "\n", "")
+        writefile("Blacklisted.txt", newContent)
+        WindUI:Notify({Title="kohls+", Content=tgt.Name.." unbanned", Duration=3})
+    end
+end)
+addcommand("unbl", "", function(args) commands["unban"](args) end)
+
 addcommand("fpunish", "", function(args) local target = args[1] if not target then return end for _, tgt in pairs(GetPlayers(target)) do if isWhitelisted(tgt) then WindUI:Notify({Title="kohls+", Content=tgt.Name.." is whitelisted, you can't touch him", Duration=3}) return end tchat("unff "..tgt.Name) tchat("freeze "..tgt.Name) tchat("invisible "..tgt.Name) end end)
 addcommand("spam", "", function(args) local msg = table.concat(args, " ") if msg == "" then return end if spamConnection then spamConnection:Disconnect() end spamConnection = game:GetService("RunService").Heartbeat:Connect(function() tchat(msg) end) WindUI:Notify({Title="kohls+", Content="Spam started: "..msg, Duration=2}) end)
 addcommand("unspam", "", function() if spamConnection then spamConnection:Disconnect() spamConnection = nil end WindUI:Notify({Title="kohls+", Content="Spam stopped", Duration=2}) end)
 addcommand("clearlogs", "", function() for i=1,50 do local block = "ff ███████████████████████████████\n███████████████████████████████\n███████████████████████████████\n███████████████████████████████\n███████████████████████████████\n███████████████████████████████\n███████████████████████████████\n███████████████████████████████\n███████████████████████████████\n███████████████████████████████" tchat(block) wait() end end)
 addcommand("fixfilter", "", function() commands["bypassmessage"]({"filtercheck"}) end)
-addcommand("bypassmessage", "", function(args) local msg = table.concat(args, " ") if msg == "" then return end local a = {} for letter in msg:gmatch(".") do if letter ~= "\r" and letter ~= "\n" then table.insert(a, letter) end end for b, c in ipairs(a) do local e = string.rep("  ", 2*(b-1)) tchat("h/the\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"..e..c) end end)
+addcommand("bypassmessage", "", function(args) local msg = table.concat(args, " ") if msg == "" then return end local a = {} for letter in msg:gmatch(".") do if letter ~= "\r" and letter ~= "\n" then table.insert(a, letter) end end for b, c in ipairs(a) do local e = string.rep("  ", 2*(b-1)) tchat("h the\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"..e..c) end end)
 addcommand("cage", "", function(args)
     local target = args[1] if not target then return end
     for _, tgt in pairs(GetPlayers(target)) do
@@ -382,7 +361,7 @@ addcommand("gearbl", "", function(args)
         if isWhitelisted(tgt) then WindUI:Notify({Title="kohls+", Content=tgt.Name.." is whitelisted, you can't touch him", Duration=3}) return end
         local prev = Loops.antikick Loops.antikick = false
         spawn(function()
-            _G.cagecheck = false tchat("gear me 00000000000000000082357101") repeat task.wait() until plr.Backpack:FindFirstChild('PortableJustice') plr.Backpack.PortableJustice.Parent = plr.Character repeat task.wait() until game.Workspace[plr.Name].PortableJustice:FindFirstChild('MouseClick') local oldpos = plr.Character.HumanoidRootPart.CFrame plr.Character.HumanoidRootPart.CFrame = tgt.Character.HumanoidRootPart.CFrame tchat('unff '..tgt.Name) repeat coroutine.wrap(function() game.Workspace[plr.Name].PortableJustice.MouseClick:FireServer(game.Workspace[tgt.Name]) end)() task.wait() until tgt.Character:FindFirstChild('DisableBackpack') coroutine.wrap(function() tchat('reset me') tchat('reset '..tgt.Name) _G.cagecheck = false tgt.CharacterAdded:Wait() tchat("h/"..tgt.Name.."/get gearbanned lol") end)() plr.CharacterAdded:Wait() plr.Character.HumanoidRootPart.CFrame = oldpos Loops.antikick = prev
+            _G.cagecheck = false tchat("gear me 00000000000000000082357101") repeat task.wait() until plr.Backpack:FindFirstChild('PortableJustice') plr.Backpack.PortableJustice.Parent = plr.Character repeat task.wait() until game.Workspace[plr.Name].PortableJustice:FindFirstChild('MouseClick') local oldpos = plr.Character.HumanoidRootPart.CFrame plr.Character.HumanoidRootPart.CFrame = tgt.Character.HumanoidRootPart.CFrame tchat('unff '..tgt.Name) repeat coroutine.wrap(function() game.Workspace[plr.Name].PortableJustice.MouseClick:FireServer(game.Workspace[tgt.Name]) end)() task.wait() until tgt.Character:FindFirstChild('DisableBackpack') coroutine.wrap(function() tchat('reset me') tchat('reset '..tgt.Name) _G.cagecheck = false tgt.CharacterAdded:Wait() tchat("get gearbanned lol "..tgt.Name) end)() plr.CharacterAdded:Wait() plr.Character.HumanoidRootPart.CFrame = oldpos Loops.antikick = prev
         end)
     end
 end)
@@ -407,24 +386,23 @@ addcommand("rmoveregen", "", function() local regen = Admin and Admin:FindFirstC
 addcommand("deletetool", "", function() local btool = Instance.new("Tool", plr.Backpack) local SelectionBox = Instance.new("SelectionBox", workspace) local hammer = Instance.new("Part") hammer.Parent = btool hammer.Name = "Handle" hammer.CanCollide = false hammer.Anchored = false SelectionBox.Name = "oof" SelectionBox.LineThickness = 0.05 SelectionBox.Adornee = nil SelectionBox.Color3 = Color3.fromRGB(0,0,255) SelectionBox.Visible = false btool.Name = "Delete Tool" btool.RequiresHandle = false local IsEquipped = false local Mouse = plr:GetMouse() btool.Equipped:Connect(function() IsEquipped = true SelectionBox.Visible = true SelectionBox.Adornee = nil end) btool.Unequipped:Connect(function() IsEquipped = false SelectionBox.Visible = false SelectionBox.Adornee = nil end) btool.Activated:Connect(function() if IsEquipped then btool.Parent = game.Chat local ex = Instance.new("Explosion") ex.BlastRadius = 0 ex.Position = Mouse.Target.Position ex.Parent = workspace local prevcfarchive = plr.Character.HumanoidRootPart.CFrame local target = Mouse.Target local function movepart() local cf = plr.Character.HumanoidRootPart local looping = true spawn(function() while true do game:GetService("RunService").Heartbeat:Wait() pcall(function() plr.Character.Humanoid:ChangeState(11) cf.CFrame = target.CFrame * CFrame.new(-(target.Size.X/2)-(plr.Character.Torso.Size.X/2),0,0) end) if not looping then break end end end) spawn(function() while looping do wait(0.1) tchat("unpunish me") end end) wait(0.25) looping = false end movepart() repeat wait() until plr.Character.Torso:FindFirstChild("Weld") tchat("skydive me") wait(0.1) tchat("respawn me") wait(0.25) game.Chat["Delete Tool"].Parent = plr.Backpack plr.Character.HumanoidRootPart.CFrame = prevcfarchive spawn(function() wait(3) if game.Chat:FindFirstChild("Delete Tool") then game.Chat["Delete Tool"]:Destroy() end end) end end) WindUI:Notify({Title="kohls+", Content="Delete Tool added to backpack", Duration=2}) end)
 
 local function transferHotPotato(player)
-    for _ = 1, 3 do
+    for _ = 1, 4 do
         tchat("gear me 000000000000000000000000000000000000000000000000000000000000025741198")
-        if plr.Backpack:FindFirstChild("HotPotato") then
-            local potato = plr.Backpack.HotPotato
-            potato.Parent = plr.Character
-            potato:Activate()
-            spawn(function()
-                while potato.Parent == plr.Character do
-                    task.wait()
-                    pcall(function()
-                        firetouchinterest(potato:WaitForChild("Handle"), player.Character.Torso, 0)
-                        firetouchinterest(potato:WaitForChild("Handle"), player.Character.Torso, 1)
-                        firetouchinterest(potato:WaitForChild("Handle"), player.Character.Torso, 0)
-                        firetouchinterest(potato:WaitForChild("Handle"), player.Character.Torso, 1)
-                    end)
-                end
-            end)
-        end
+        repeat task.wait() until plr.Backpack:FindFirstChild("HotPotato")
+        local potato = plr.Backpack.HotPotato
+        potato.Parent = plr.Character
+        potato:Activate()
+        spawn(function()
+            while potato.Parent == plr.Character do
+                task.wait()
+                pcall(function()
+                    firetouchinterest(potato:WaitForChild("Handle"), player.Character.Torso, 0)
+                    firetouchinterest(potato:WaitForChild("Handle"), player.Character.Torso, 1)
+                    firetouchinterest(potato:WaitForChild("Handle"), player.Character.Torso, 0)
+                    firetouchinterest(potato:WaitForChild("Handle"), player.Character.Torso, 1)
+                end)
+            end
+        end)
     end
 end
 
@@ -435,6 +413,10 @@ addcommand("kick", "", function(args)
         local prev = Loops.antikick
         Loops.antikick = false
         spawn(function()
+            tchat("unff me")
+            tchat("ff me")
+            tchat("ff " .. tgt.Name)
+            tchat("blind " .. tgt.Name)
             tchat("size " .. tgt.Name .. " nan")
             task.wait(0.2)
             tchat("freeze " .. tgt.Name)
