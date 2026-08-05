@@ -76,7 +76,6 @@ local GameFolder = Terrain and (Terrain:FindFirstChild("_Game") or Terrain:FindF
 local Admin = GameFolder and GameFolder:FindFirstChild("Admin")
 local Pads = Admin and Admin:FindFirstChild("Pads")
 local Folder = GameFolder and GameFolder:FindFirstChild("Folder")
-local GAMEFOLDER = GameFolder and "_Game" or "GameFolder"
 local myjail = plr.Name .. "'s jail"
 local safeTools = {["Building Tools"] = true, ["F3X"] = true, ["Delete Tool"] = true}
 
@@ -196,7 +195,7 @@ spawn(function()
             end)
         end
 
-        -- Anti Freeze (согласно твоему примеру)
+        -- Anti Freeze
         if _G_antifreeze then
             pcall(function()
                 if plr.Character and plr.Character:FindFirstChild("ice") then
@@ -214,7 +213,7 @@ spawn(function()
             end)
         end
 
-        -- Anti Fly (как в примере)
+        -- Anti Fly
         if Loops.antifly then
             pcall(function()
                 local chr = plr.Character
@@ -230,7 +229,7 @@ spawn(function()
             end)
         end
 
-        -- Anti Message (удаление MessageGUI, Message, HintGUI)
+        -- Anti Message
         if antimessage then
             pcall(function()
                 for _, v in ipairs(plr.PlayerGui:GetDescendants()) do
@@ -256,7 +255,7 @@ spawn(function()
         if Loops.antitripmine then pcall(function() local tm = workspace:FindFirstChild("SubspaceTripmine") if tm then tm:Destroy() tchat("clr") end end) end
         if Loops.antieggbomb then pcall(function() local eb = workspace:FindFirstChild("EggBomb") if eb then eb:Destroy() tchat("clr") end end) end
 
-        -- Антибанхаммер (теперь мониторит всех, включая новых)
+        -- Антибанхаммер (непрерывный мониторинг всех игроков)
         if antiBanHammer then
             for _, p in ipairs(Players:GetPlayers()) do
                 if p ~= plr and p.Backpack and p.Backpack:FindFirstChild("BanHammer") then
@@ -312,7 +311,7 @@ end)
 local __commandsTab = Window:Tab({ Title = "Commands", Icon = "lucide:terminal" })
 __commandsTab:Paragraph({
     Title = "Commands 1",
-    Desc = "ban <player>\nunban <player>\nfpunish <player>\nkick <player>\nkick2 <player>\nphyskick <player>\nkid <player>\nspam <message>\nunspam\nclearlogs\nfixfilter\nbypassmessage <message>\ncage <player>\nloopcage <player>\nunloopcage <player>\ngearbl <player>\nungearbl <player>\nnokill\nunnokill"
+    Desc = "ban <player>\nunban <player>\nfpunish <player>\nkick <player>\ncrash <player>\nkid <player>\nspam <message>\nunspam\nclearlogs\nfixfilter\nbypassmessage <message>\ncage <player>\nloopcage <player>\nunloopcage <player>\ngearbl <player>\nungearbl <player>\nnokill\nunnokill"
 })
 __commandsTab:Paragraph({
     Title = "Commands 2",
@@ -454,7 +453,7 @@ addcommand("tptoregen", "", function() local regen = Admin and Admin:FindFirstCh
 addcommand("rmoveregen", "", function() local regen = Admin and Admin:FindFirstChild("Regen") if regen and regen.CFrame.Y < 500 then spawn(function() local chr = plr.Character if not chr or not chr:FindFirstChild("Humanoid") then return end local cf = chr.HumanoidRootPart local looping = true spawn(function() while true do game:GetService("RunService").Heartbeat:Wait() pcall(function() chr.Humanoid:ChangeState(11) cf.CFrame = regen.CFrame * CFrame.new(-(regen.Size.X/2)-(chr.Torso.Size.X/2),0,0) end) if not looping then break end end end) spawn(function() while looping do wait(0.1) tchat("unpunish me") end end) wait(0.3) looping = false tchat("trip me") wait(0.2) tchat("respawn me") end) else WindUI:Notify({Title="kohls+", Content="Regen already moved or not found", Duration=2}) end end)
 addcommand("deletetool", "", function() local btool = Instance.new("Tool", plr.Backpack) local SelectionBox = Instance.new("SelectionBox", workspace) local hammer = Instance.new("Part") hammer.Parent = btool hammer.Name = "Handle" hammer.CanCollide = false hammer.Anchored = false SelectionBox.Name = "oof" SelectionBox.LineThickness = 0.05 SelectionBox.Adornee = nil SelectionBox.Color3 = Color3.fromRGB(0,0,255) SelectionBox.Visible = false btool.Name = "Delete Tool" btool.RequiresHandle = false local IsEquipped = false local Mouse = plr:GetMouse() btool.Equipped:Connect(function() IsEquipped = true SelectionBox.Visible = true SelectionBox.Adornee = nil end) btool.Unequipped:Connect(function() IsEquipped = false SelectionBox.Visible = false SelectionBox.Adornee = nil end) btool.Activated:Connect(function() if IsEquipped then btool.Parent = game.Chat local ex = Instance.new("Explosion") ex.BlastRadius = 0 ex.Position = Mouse.Target.Position ex.Parent = workspace local prevcfarchive = plr.Character.HumanoidRootPart.CFrame local target = Mouse.Target local function movepart() local cf = plr.Character.HumanoidRootPart local looping = true spawn(function() while true do game:GetService("RunService").Heartbeat:Wait() pcall(function() plr.Character.Humanoid:ChangeState(11) cf.CFrame = target.CFrame * CFrame.new(-(target.Size.X/2)-(plr.Character.Torso.Size.X/2),0,0) end) if not looping then break end end end) spawn(function() while looping do wait(0.1) tchat("unpunish me") end end) wait(0.25) looping = false end movepart() repeat wait() until plr.Character.Torso:FindFirstChild("Weld") tchat("skydive me") wait(0.1) tchat("respawn me") wait(0.25) game.Chat["Delete Tool"].Parent = plr.Backpack plr.Character.HumanoidRootPart.CFrame = prevcfarchive spawn(function() wait(3) if game.Chat:FindFirstChild("Delete Tool") then game.Chat["Delete Tool"]:Destroy() end end) end end) WindUI:Notify({Title="kohls+", Content="Delete Tool added to backpack", Duration=2}) end)
 
--- Передача HotPotato (старый kick)
+-- Старый kick (с HotPotato и завершающими командами)
 local function transferHotPotato(player)
     for _ = 1, 4 do
         tchat("gear me 000000000000000000000000000000000000000000000000000000000000025741198")
@@ -492,8 +491,8 @@ addcommand("kick", "", function(args)
             tchat("freeze " .. tgt.Name)
             transferHotPotato(tgt)
             task.wait(1.5)
-            -- завершающие команды
             tchat("reset " .. tgt.Name)
+            task.wait(0.6) -- задержка после reset
             tchat("rainbowify " .. tgt.Name)
             tchat("name " .. tgt.Name .. " CRASHED BY " .. plr.DisplayName)
             antikick = prev
@@ -501,8 +500,8 @@ addcommand("kick", "", function(args)
     end
 end)
 
--- ФИЗИЧЕСКИЙ КИК (старый physkick)
-addcommand("physkick", "", function(args)
+-- CRASH (чистая физика BanHammer, без команд)
+addcommand("crash", "", function(args)
     local target = args[1] if not target then return end
     for _, tgt in pairs(GetPlayers(target)) do
         if isWhitelisted(tgt) then WindUI:Notify({Title="Kohls+", Content=tgt.Name.." is whitelisted, you can't touch him", Duration=3}) return end
@@ -517,34 +516,6 @@ addcommand("physkick", "", function(args)
                 tgtChar.Torso.RotVelocity = Vector3.new(math.random(-100, 100), math.random(-100, 100), math.random(-100, 100))
             end
             task.wait(1.5)
-            antikick = prev
-        end)
-    end
-end)
-
--- KICK2 – сверхбыстрый кик (физика + команды)
-addcommand("kick2", "", function(args)
-    local target = args[1] if not target then return end
-    for _, tgt in pairs(GetPlayers(target)) do
-        if isWhitelisted(tgt) then WindUI:Notify({Title="Kohls+", Content=tgt.Name.." is whitelisted, you can't touch him", Duration=3}) return end
-        local prev = antikick
-        antikick = false
-        spawn(function()
-            local ourChar = plr.Character
-            local tgtChar = tgt.Character
-            if ourChar and ourChar:FindFirstChild("HumanoidRootPart") and tgtChar and tgtChar:FindFirstChild("Torso") then
-                local lookDir = (tgtChar.Torso.Position - ourChar.HumanoidRootPart.Position).unit
-                tgtChar.Torso.Velocity = lookDir * 350 + Vector3.new(0, 150, 0)
-                tgtChar.Torso.RotVelocity = Vector3.new(math.random(-200, 200), math.random(-200, 200), math.random(-200, 200))
-            end
-            -- дополнительные быстрые команды для гарантированного кика
-            tchat("size " .. tgt.Name .. " nan")
-            tchat("freeze " .. tgt.Name)
-            tchat("ff " .. tgt.Name)
-            tchat("reset " .. tgt.Name)
-            tchat("rainbowify " .. tgt.Name)
-            tchat("name " .. tgt.Name .. " CRASHED BY " .. plr.DisplayName)
-            task.wait(0.2)
             antikick = prev
         end)
     end
