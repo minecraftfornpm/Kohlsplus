@@ -106,8 +106,6 @@ local spamConnection = nil
 local autoGod = false
 local permNotified = false
 local nokEnabled = false
-
--- переменные для nomusic / resmusic
 local antimusic = false
 local boxcmd = nil
 
@@ -295,13 +293,9 @@ end)
 local function TNOK(mode)
     pcall(function()
         local targetMode = (mode == "true")
-        -- путь через Terrain._Game
         local obby1 = workspace.Terrain and workspace.Terrain._Game and workspace.Terrain._Game.Workspace and workspace.Terrain._Game.Workspace.Obby
-        -- путь через Terrain.GameFolder
         local obby2 = workspace.Terrain and workspace.Terrain.GameFolder and workspace.Terrain.GameFolder.Workspace and workspace.Terrain.GameFolder.Workspace.Obby
-        -- путь через Tabby
         local obby3 = workspace:FindFirstChild("Tabby") and workspace.Tabby.Admin_House and workspace.Tabby.Admin_House.Obby
-
         for _, obby in ipairs({obby1, obby2, obby3}) do
             if obby then
                 for _, v in ipairs(obby:GetChildren()) do
@@ -315,32 +309,102 @@ end
 addcommand("nokill", "Disable obby kill", function() nokEnabled = true TNOK("true") WindUI:Notify({Title="kohls+", Content="Obby Kill disabled", Duration=2}) end)
 addcommand("unnokill", "Enable obby kill", function() nokEnabled = false TNOK("false") WindUI:Notify({Title="kohls+", Content="Obby Kill enabled", Duration=2}) end)
 
+-- ================== ADMIN (remote spy) ИСПРАВЛЕН ==================
 local adminTargetName = nil
 local adminConn = nil
+
+-- удаляем только настоящие невидимые символы, сохраняя все буквы
 local function cleanMessage(msg)
-    return (msg:gsub("[^\32-\126]", ""))
+    msg = msg:gsub("\226\128\139", "")  -- zero width space
+    msg = msg:gsub("\226\128\140", "")  -- zero width non-joiner
+    msg = msg:gsub("\226\128\141", "")  -- zero width joiner
+    msg = msg:gsub("\239\187\191", "")  -- BOM
+    return msg
 end
+
+local playerArgCommands = {
+    speed=true, tp=true, gear=true, cape=true, skydive=true, jail=true,
+    noclip=true, flynoclip=true, control=true, kill=true, respawn=true,
+    reset=true, trip=true, stun=true, jump=true, sit=true, invis=true,
+    unlock=true, explod=true, age=true, fire=true, smoke=true,
+    sparkles=true, ff=true, punish=true, freeze=true, thaw=true,
+    loopheal=true, heal=true, trail=true, god=true, btools=true,
+    banhammer=true, damage=true, setgrav=true, shirt=true, pants=true,
+    face=true, char=true, package=true, gun=true, seizure=true,
+    flashify=true, spin=true, dog=true, undog=true, size=true,
+    unsize=true, creeper=true, bighead=true, minihead=true, fling=true,
+    removelimbs=true, infect=true, noobify=true, ghostify=true, shiny=true,
+    name=true, clone=true
+}
+
 local function onMessageReceived(data, channel)
     local speaker = data.FromSpeaker
     local message = cleanMessage(data.Message)
+
+    -- команды из чата с префиксом ?
     if speaker == plr.Name and message:sub(1,1) == "?" then
         local cmdText = message:sub(2)
         executeCommand(cmdText)
         return
     end
+
     if adminTargetName and speaker == adminTargetName then
+        -- игнорируем сообщения, начинающиеся с ?
         if message:sub(1,1) == "?" then return end
+
         local parts = message:split(" ")
-        local cmd = parts[1]
-        local newCmd = cmd .. " " .. adminTargetName
-        for i = 2, #parts do
-            local arg = parts[i]
-            if arg:lower() == "me" then arg = adminTargetName end
-            newCmd = newCmd .. " " .. arg
+        local cmd = parts[1]:lower()
+
+        -- специальная команда cmds
+        if cmd == "cmds" then
+            local cmdList = "?ban ?unban ?fpunish ?kick ?kid ?spam ?unspam ?clearlogs ?fixfilter ?bypassmessage ?cage ?loopcage ?unloopcage ?gearbl ?ungearbl ?nokill ?unnokill ?fixvel ?regen ?fixregen ?tptoregen ?rmoveregen ?deletetool ?jerk ?bang ?unbang ?ping ?rejoin ?serverhop ?nocam ?fcam ?fixcam ?weld ?slag ?joinppl ?r15 ?r6 ?nomusic ?resmusic"
+            tchat("pm " .. adminTargetName .. " " .. cmdList)
+            return
         end
-        tchat(newCmd)
+
+        -- игнорируем logs и oldcmds (только для локального игрока)
+        if cmd == "logs" or cmd == "oldcmds" then return end
+
+        -- команды без аргументов player (m, h, sm, music, sfx, ambient, brightness, time, fogcolor, fogend, fogstart, pitch, spitch, stopmusic, disco, guns, oldf3x, savemap, loadmap, etc.)
+        local noPlayerCmd = {
+            m=true, h=true, sm=true, setmessage=true, ambient=true,
+            brightness=true, time=true, fogcolor=true, fogend=true,
+            fogstart=true, music=true, sfx=true, pitch=true, spitch=true,
+            stopmusic=true, disco=true, guns=true, clear=true,
+            savemap=true, loadmap=true, oldf3x=true, startergive=true,
+            musiclist=true, logs=true, oldcmds=true
+        }
+
+        if noPlayerCmd[cmd] then
+            -- просто отправляем исходное сообщение (оно уже без изменений)
+            tchat(message)
+            return
+        end
+
+        -- команды с player аргументом
+        if playerArgCommands[cmd] then
+            local newCmd = cmd .. " "
+            if #parts == 1 then
+                -- только команда, без аргументов -> цель = adminTargetName
+                newCmd = newCmd .. adminTargetName
+            elseif #parts >= 2 then
+                local arg1 = parts[2]:lower()
+                if arg1 == "me" then
+                    newCmd = newCmd .. adminTargetName
+                else
+                    -- сохраняем все аргументы как есть
+                    newCmd = message
+                end
+            end
+            tchat(newCmd)
+            return
+        end
+
+        -- все остальные команды просто пересылаем
+        tchat(message)
     end
 end
+
 adminConn = OnMessageDoneFiltering.OnClientEvent:Connect(function(data, channel) onMessageReceived(data, channel) end)
 addcommand("admin", "Spy on a player's commands", function(args)
     local target = args[1] if not target then return end
@@ -391,9 +455,7 @@ Players.PlayerAdded:Connect(function(p)
             kickBtn.Position = UDim2.new(0.55,0,0.7,0)
             kickBtn.Text = "Kick"
             kickBtn.Parent = frame
-            ignoreBtn.MouseButton1Click:Connect(function()
-                dialog:Destroy()
-            end)
+            ignoreBtn.MouseButton1Click:Connect(function() dialog:Destroy() end)
             kickBtn.MouseButton1Click:Connect(function()
                 dialog:Destroy()
                 executeCommand("kick " .. p.Name)
@@ -411,7 +473,7 @@ __commandsTab:Paragraph({
 })
 __commandsTab:Paragraph({
     Title = "Commands 2",
-    Desc = "fixvel – fix velocity\nregen – click regen\nfixregen – move regen to spawn\ntptoregen – teleport to regen\nrmoveregen – remove regen\ndeletetool – get delete tool\njerk – you know\nbang <player> – bang animation\nunbang – stop bang\nping – show ping\nrejoin (rj) – rejoin server\nserverhop (shop) – hop server\nnocam – break camera (shiftlock)\nfcam <player> – break player's camera\nfixcam <player> – fix player's camera\nweld <player> [mode] – weld player (modes: hold/right arm/left arm/torso)\nslag – server lag (9 stones)\njoinppl <username/userId> – join a player's server\nr15 – switch to R15\nr6 – switch to R6\nraver – start a rave\ngungame – gun circle formation\nnomusic – force stop all music\nresmusic – resume normal music"
+    Desc = "fixvel – fix velocity\nregen – click regen\nfixregen – move regen to spawn\ntptoregen – teleport to regen\nrmoveregen – remove regen\ndeletetool – get delete tool\njerk – you know\nbang <player> – bang animation\nunbang – stop bang\nping – show ping\nrejoin (rj) – rejoin server\nserverhop (shop) – hop server\nnocam – break camera (shiftlock)\nfcam <player> – break player's camera\nfixcam <player> – fix player's camera\nweld <player> [mode] – weld player\nslag – server lag (4 stones)\njoinppl <username/userId> – join a player's server\nr15 – switch to R15\nr6 – switch to R6\nnomusic – force stop all music\nresmusic – resume normal music"
 })
 
 local __mainTab = Window:Tab({ Title = "Main", Icon = "home" })
@@ -680,18 +742,18 @@ addcommand("weld", "Weld player (mode: hold, right arm, left arm, torso)", funct
     end
 end)
 
--- slag с задержками и гарантированной активацией всех камней
-addcommand("slag", "Server lag (9 stones)", function()
+-- slag (2 камня)
+addcommand("slag", "Server lag (2 stones)", function()
     tchat("ungear me")
     task.wait(0.5)
-    for _=1,9 do
+    for _=1,2 do
         tchat("gear me 000000000000000000000000000000000000000000059190534")
         task.wait(0.1)
     end
-    repeat task.wait() until #plr.Backpack:GetChildren() >= 9
+    repeat task.wait() until #plr.Backpack:GetChildren() >= 2
     task.wait(0.7)
     local stones = {}
-    for i=1,9 do
+    for i=1,2 do
         local stone = plr.Backpack:GetChildren()[i]
         stone.Parent = plr.Character
         table.insert(stones, stone)
@@ -702,6 +764,11 @@ addcommand("slag", "Server lag (9 stones)", function()
             stone.ServerControl:InvokeServer("KeyPress", {["Key"] = "x", ["Down"] = true})
         end)
     end
+end)
+
+-- serverlag (то же самое, что и slag)
+addcommand("serverlag", "Server lag (2 stones)", function()
+    commands["slag"]({})
 end)
 
 -- joinppl (аватарный поиск)
@@ -781,113 +848,6 @@ addcommand("r15", "Switch to R15", function()
 end)
 addcommand("r6", "Switch to R6", function()
     tchat("!experiment adaptiver6 off")
-end)
-
--- новые команды
-addcommand("raver", "Throws a raver", function()
-    chat("ARE YOU READY!?")
-    task.wait()
-    tchat("disco")
-    tchat("music 18841887539")
-    task.wait(1)
-    tchat("skip 20.5")
-    task.wait()
-    chat(" ONE!")
-    task.wait(1)
-    chat(" TWO!")
-    task.wait(1)
-    chat("THREE!")
-    task.wait(1)
-    chat("RUN THE BEAT!")
-    task.wait(40)
-    tchat("h  hello there \n\n\n\n\n\n\n na")
-    task.wait(1)
-    tchat("h  hello there \n\n\n\n\n\n\n\n na")
-    task.wait(1)
-    tchat("h  hello there \n\n\n\n\n\n\n\n\n na")
-    task.wait(1)
-    tchat("h  hello there \n\n\n\n\n\n\n\n\n\n na")
-    task.wait(0.5)
-    tchat("h  hello there \n\n\n\n\n\n\n\n\n\n\n na")
-    task.wait(0.5)
-    tchat("h  hello there \n\n\n\n\n\n\n\n\n\n\n\n na")
-end)
-
-addcommand("gungame", "Gun circle formation", function()
-    local amount = 100
-    local loop = 10
-    local segment = 12 -- можно менять
-
-    repeat
-        if getgenv().laser == true then
-            for i = 1, amount do
-                tchat("gear me 139578207")
-            end
-        else
-            for i = 1, amount do
-                tchat("gear me 079446473")
-            end
-        end
-        task.wait(0.5)
-    until #plr.Backpack:GetChildren() >= amount
-
-    task.wait(1)
-
-    for i = 1, loop do
-        local cf = CFrame.new(Vector3.new(0, -i+3, 0))
-        local segments = segment
-        local radius = 5
-        local Positions = {}
-        local single = 360 / segments
-
-        for j = 1, segments do
-            local angle = single * j
-            local cheating = cf * CFrame.Angles(0, math.rad(angle), 0)
-            table.insert(Positions, cheating.Position + cheating.LookVector * radius)
-        end
-
-        if i == 1 then
-            coroutine.wrap(function()
-                tchat("music 3666863095")
-                task.wait(1)
-                tchat("music")
-            end)()
-        end
-
-        if i == loop then
-            coroutine.wrap(function()
-                local ids = {3418223760, 4481540947}
-                if getgenv().laser == true then
-                    tchat("music " .. ids[1])
-                    task.wait(0.7)
-                    tchat("music")
-                else
-                    tchat("music " .. ids[2])
-                    task.wait(0.5)
-                    tchat("music")
-                end
-            end)()
-        end
-
-        for j = 1, amount/loop do
-            local v = plr.Backpack:FindFirstChild(getgenv().gungame or "Laser")
-            if v then
-                pcall(function()
-                    v.Parent = plr.Character
-                    if Positions[j] then
-                        v.GripPos = Positions[j]
-                    end
-                end)
-            end
-        end
-
-        for j = 1, #Positions do
-            table.remove(Positions, j)
-        end
-        task.wait(0.2)
-    end
-
-    wait(1)
 end)
 
 addcommand("nomusic", "Force stop all music", function()
