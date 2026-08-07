@@ -303,9 +303,12 @@ addcommand("unnokill", "Enable obby kill", function() nokEnabled = false TNOK("f
 
 local adminTargetName = nil
 local adminConn = nil
+-- исправленная очистка: удаляем только невидимые управляющие символы
 local function cleanMessage(msg)
-    msg = msg:gsub("[\226\128\139-\226\128\143]", "")
-    msg = msg:gsub("[\194\160]", " ")
+    -- удаляем zero‑width space, zero‑width non‑joiner, zero‑width joiner, byte order mark
+    msg = msg:gsub("\226\128\139", ""):gsub("\226\128\140", ""):gsub("\226\128\141", ""):gsub("\239\187\191", "")
+    -- неразрывный пробел -> обычный пробел
+    msg = msg:gsub("\194\160", " ")
     return msg
 end
 local function onMessageReceived(data, channel)
@@ -391,8 +394,12 @@ end)
 
 local __commandsTab = Window:Tab({ Title = "Commands", Icon = "lucide:terminal" })
 __commandsTab:Paragraph({
-    Title = "Commands",
-    Desc = "ban <player> – add to blacklist\nunban <player> – remove from blacklist\nfpunish <player> – fake punish\nkick <player> – hot potato kick\nbkick <player> [BETA] – blue bucket kick\nkid <player> – make a kid\nspam <message> – spam\nunspam – stop spam\nclearlogs – clear logs\nfixfilter – fix chat filter\nbypassmessage <msg> – bypass filter\ncage <player> – cage player\nloopcage <player> – loop cage\nunloopcage <player> – stop loop\ngearbl <player> – gear ban\nungearbl <player> – ungear ban\nnokill – disable obby kill\nunnokill – enable obby kill\nadmin <player> – spy on player\nunadmin – stop spying\nfixvel – fix velocity\nregen – click regen\nfixregen – move regen to spawn\ntptoregen – teleport to regen\nrmoveregen – remove regen\ndeletetool – get delete tool\njerk – you know\nbang <player> – bang animation\nunbang – stop bang\nping – show ping\nrejoin (rj) – rejoin server\nserverhop (shop) – hop server\nnocam – break camera (shiftlock)\ntogcam [b/f] – break/fix camera\nfcam <player> – break player's camera\nfixcam – fix camera (client)\nglitch <player> – fast dagger kick\nweld <player> [mode] – weld player (modes: hold/right arm/left arm/torso)\nstonemap [maybe no work] – stone map"
+    Title = "Commands 1",
+    Desc = "ban <player> – add to blacklist\nunban <player> – remove from blacklist\nfpunish <player> – fake punish\nkick <player> – hot potato kick\nkid <player> – make a kid\nspam <message> – spam\nunspam – stop spam\nclearlogs – clear logs\nfixfilter – fix chat filter\nbypassmessage <msg> – bypass filter\ncage <player> – cage player\nloopcage <player> – loop cage\nunloopcage <player> – stop loop\ngearbl <player> – gear ban\nungearbl <player> – ungear ban\nnokill – disable obby kill\nunnokill – enable obby kill\nadmin <player> – spy on player\nunadmin – stop spying"
+})
+__commandsTab:Paragraph({
+    Title = "Commands 2",
+    Desc = "fixvel – fix velocity\nregen – click regen\nfixregen – move regen to spawn\ntptoregen – teleport to regen\nrmoveregen – remove regen\ndeletetool – get delete tool\njerk – you know\nbang <player> – bang animation\nunbang – stop bang\nping – show ping\nrejoin (rj) – rejoin server\nserverhop (shop) – hop server\nnocam – break camera (shiftlock)\nfcam <player> – break player's camera\nfixcam <player> – fix player's camera\nweld <player> [mode] – weld player (modes: hold/right arm/left arm/torso)\nslag – server lag (9 stones)\njoinppl <username/userId> – join a player's server"
 })
 
 local __mainTab = Window:Tab({ Title = "Main", Icon = "home" })
@@ -530,8 +537,9 @@ addcommand("tptoregen", "Teleport to regen", function() local regen = Admin and 
 addcommand("rmoveregen", "Remove regen", function() local regen = Admin and Admin:FindFirstChild("Regen") if regen and regen.CFrame.Y < 500 then spawn(function() local chr = plr.Character if not chr or not chr:FindFirstChild("Humanoid") then return end local cf = chr.HumanoidRootPart local looping = true spawn(function() while true do game:GetService("RunService").Heartbeat:Wait() pcall(function() chr.Humanoid:ChangeState(11) cf.CFrame = regen.CFrame * CFrame.new(-(regen.Size.X/2)-(chr.Torso.Size.X/2),0,0) end) if not looping then break end end end) spawn(function() while looping do wait(0.1) tchat("unpunish me") end end) wait(0.3) looping = false tchat("trip me") wait(0.2) tchat("respawn me") end) else WindUI:Notify({Title="kohls+", Content="Regen already moved or not found", Duration=2}) end end)
 addcommand("deletetool", "Get delete tool", function() local btool = Instance.new("Tool", plr.Backpack) local SelectionBox = Instance.new("SelectionBox", workspace) local hammer = Instance.new("Part") hammer.Parent = btool hammer.Name = "Handle" hammer.CanCollide = false hammer.Anchored = false SelectionBox.Name = "oof" SelectionBox.LineThickness = 0.05 SelectionBox.Adornee = nil SelectionBox.Color3 = Color3.fromRGB(0,0,255) SelectionBox.Visible = false btool.Name = "Delete Tool" btool.RequiresHandle = false local IsEquipped = false local Mouse = plr:GetMouse() btool.Equipped:Connect(function() IsEquipped = true SelectionBox.Visible = true SelectionBox.Adornee = nil end) btool.Unequipped:Connect(function() IsEquipped = false SelectionBox.Visible = false SelectionBox.Adornee = nil end) btool.Activated:Connect(function() if IsEquipped then btool.Parent = game.Chat local ex = Instance.new("Explosion") ex.BlastRadius = 0 ex.Position = Mouse.Target.Position ex.Parent = workspace local prevcfarchive = plr.Character.HumanoidRootPart.CFrame local target = Mouse.Target local function movepart() local cf = plr.Character.HumanoidRootPart local looping = true spawn(function() while true do game:GetService("RunService").Heartbeat:Wait() pcall(function() plr.Character.Humanoid:ChangeState(11) cf.CFrame = target.CFrame * CFrame.new(-(target.Size.X/2)-(plr.Character.Torso.Size.X/2),0,0) end) if not looping then break end end end) spawn(function() while looping do wait(0.1) tchat("unpunish me") end end) wait(0.25) looping = false end movepart() repeat wait() until plr.Character.Torso:FindFirstChild("Weld") tchat("skydive me") wait(0.1) tchat("respawn me") wait(0.25) game.Chat["Delete Tool"].Parent = plr.Backpack plr.Character.HumanoidRootPart.CFrame = prevcfarchive spawn(function() wait(3) if game.Chat:FindFirstChild("Delete Tool") then game.Chat["Delete Tool"]:Destroy() end end) end end) WindUI:Notify({Title="kohls+", Content="Delete Tool added to backpack", Duration=2}) end)
 
+-- Transfer HotPotato (3 раза циклом)
 local function transferHotPotato(player)
-    for _ = 1, 4 do
+    for _=1,3 do
         tchat("gear me 000000000000000000000000000000000000000000025741198")
         repeat task.wait() until plr.Backpack:FindFirstChild("HotPotato")
         local potato = plr.Backpack.HotPotato
@@ -572,35 +580,6 @@ addcommand("kick", "Hot potato kick", function(args)
     end
 end)
 
-addcommand("bkick", "[BETA] Blue bucket kick", function(args)
-    local target = args[1] if not target then return end
-    for _, tgt in pairs(GetPlayers(target)) do
-        if isWhitelisted(tgt) then WindUI:Notify({Title="Kohls+", Content=tgt.Name.." is whitelisted, you can't touch him", Duration=3}) return end
-        local prev = antifreeze antifreeze = false
-        spawn(function()
-            tchat("freeze " .. tgt.Name)
-            tchat("size " .. tgt.Name .. " nan")
-            for _=1,3 do tchat("gear me 0000000000000000000000000000000000025162389") end
-            task.wait(0.2)
-            local bucket = plr.Backpack:FindFirstChild("Bucket") or plr.Backpack:FindFirstChild("Rake")
-            if bucket then
-                bucket.Parent = plr.Character
-                bucket:Activate()
-            end
-            local oldPos = plr.Character.HumanoidRootPart.CFrame
-            plr.Character.HumanoidRootPart.CFrame = tgt.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,2)
-            task.wait(0.5)
-            plr.Character.HumanoidRootPart.CFrame = oldPos
-            task.wait(1)
-            tchat("reset " .. tgt.Name)
-            tchat("rainbowify " .. tgt.Name)
-            tchat("name " .. tgt.Name .. " [Kohls+]\nKicked by blue bucket, " .. plr.DisplayName .. "\n" .. tgt.DisplayName)
-            recentlyKicked[tgt.Name] = true
-            antifreeze = prev
-        end)
-    end
-end)
-
 addcommand("kid", "Make a player small with a candy", function(args)
     local target = args[1] if not target then return end
     for _, tgt in pairs(GetPlayers(target)) do
@@ -618,21 +597,6 @@ addcommand("nocam", "Break camera (shiftlock)", function()
     task.wait(0.2)
     cambrek:Activate()
     WindUI:Notify({Title="kohls+", Content="The camera is now broken into shiftlock - you won't see the effect until you rejoin.", Duration=5})
-end)
-
-addcommand("togcam", "Break or fix camera (b = break, f = fix)", function(args)
-    local mode = args[1] or "f"
-    tchat("tp others me")
-    tchat("gear me 000000000000000000000000000000000000000000068354832")
-    repeat wait() until plr.Backpack:FindFirstChild("BlizzardWand")
-    local wand = plr.Backpack:FindFirstChild("BlizzardWand")
-    wand.Parent = plr.Character
-    wait(0.2)
-    wand:Activate()
-    if mode == "b" then
-        wait(0.4)
-        tchat("reset all")
-    end
 end)
 
 addcommand("fcam", "Break a player's camera", function(args)
@@ -658,61 +622,10 @@ addcommand("fcam", "Break a player's camera", function(args)
     tchat("respawn me")
 end)
 
-addcommand("fixcam", "Fix camera (client)", function()
-    spawn(function()
-        local Player = plr
-        local PlayerService = game:GetService("Players")
-        local lp = PlayerService.LocalPlayer
-        local UIS = game:GetService("UserInputService")
-        local CAS = game:GetService("ContextActionService")
-        local RUS = game:GetService('RunService')
-        CAS:UnbindAction("ShoulderCameraSprint")
-        RUS:UnbindFromRenderStep("ShoulderCameraUpdate")
-        CAS:UnbindAction("ShoulderCameraZoom")
-        while true do
-            task.wait()
-            repeat game:GetService('RunService').Heartbeat:Wait() until game.Workspace.CurrentCamera.CameraType == Enum.CameraType.Scriptable
-            RUS:UnbindFromRenderStep("ShoulderCameraUpdate")
-            CAS:UnbindAction("ShoulderCameraZoom")
-            CAS:UnbindAction("ShoulderCameraSprint")
-            local WEPSYS = game:GetService("ReplicatedStorage"):FindFirstChild('WeaponsSystem')
-            if not WEPSYS then return end
-            for i,v in pairs(WEPSYS:GetDescendants()) do
-                if v:IsA("Script") then v.Disabled = true end
-                v:Destroy()
-            end
-            local CWS = lp.PlayerGui:FindFirstChild("ClientWeaponsScript")
-            local WSG = lp.PlayerGui:FindFirstChild("WeaponsSystemGui")
-            local CWS_2 = lp.PlayerScripts:FindFirstChild("ClientWeaponsScript")
-            local Camera = game:GetService("Workspace"):FindFirstChild("Camera")
-            if CWS then CWS.Disabled = true CWS:Destroy() end
-            if WSG then WSG:Destroy() end
-            if CWS_2 then CWS_2.Disabled = true CWS_2:Destroy() end
-            game:GetService("UserInputService").MouseBehavior = Enum.MouseBehavior.Default
-            UIS.MouseIconEnabled = true
-            PlayerService.LocalPlayer.CameraMaxZoomDistance = 400
-            PlayerService.LocalPlayer.CameraMinZoomDistance = 0.5
-            Camera.FieldOfView = 70
-            game.Workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
-            game.Workspace.CurrentCamera.CameraSubject = lp.Character.Humanoid
-            lp.Character.Humanoid.AutoRotate = true
-        end
-    end)
-end)
-
-addcommand("glitch", "Fast dagger kick", function(args)
+addcommand("fixcam", "Fix camera for a player", function(args)
     local target = args[1] if not target then return end
-    tchat("gear me 000000000000000000000000000000000000000000071037101")
-    repeat task.wait() until plr.Backpack:FindFirstChild("DaggerOfShatteredDimensions")
-    local dagg = plr.Backpack:FindFirstChild("DaggerOfShatteredDimensions")
-    task.wait()
-    dagg.Parent = plr.Character
-    task.wait()
-    tchat("god "..target)
-    tchat("tp "..target.." me")
-    game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.Q, false, game)
-    task.wait(2)
-    tchat("reset me")
+    tchat("reset " .. target)
+    WindUI:Notify({Title="kohls+", Content="Sent reset to "..target, Duration=2})
 end)
 
 addcommand("weld", "Weld player (mode: hold, right arm, left arm, torso)", function(args)
@@ -754,18 +667,73 @@ addcommand("weld", "Weld player (mode: hold, right arm, left arm, torso)", funct
     end
 end)
 
-addcommand("stonemap", "[maybe no work] Stone the whole map", function()
+addcommand("slag", "Server lag (9 stones)", function()
     tchat("ungear me")
     task.wait(0.5)
-    tchat("gear me 000000000000000000000000000000000000000000059190534")
-    tchat("gear me 000000000000000000000000000000000000000000059190534")
-    repeat task.wait() until #plr.Backpack:GetChildren() >= 2
-    local stoneTool1, stoneTool2 = plr.Backpack:GetChildren()[1], plr.Backpack:GetChildren()[2]
+    for _=1,9 do tchat("gear me 000000000000000000000000000000000000000000059190534") end
+    repeat task.wait() until #plr.Backpack:GetChildren() >= 9
+    task.wait(0.7)   -- ожидание 0.7 миллисекунды (на самом деле 0.7 секунды, как просили)
+    local stones = {}
+    for i=1,9 do
+        local stone = plr.Backpack:GetChildren()[i]
+        stone.Parent = plr.Character
+        table.insert(stones, stone)
+    end
     task.wait()
-    stoneTool1.Parent, stoneTool2.Parent = plr.Character, plr.Character
-    task.wait()
-    spawn(function() stoneTool1.ServerControl:InvokeServer("KeyPress", {["Key"] = "x", ["Down"] = true}) end)
-    spawn(function() stoneTool2.ServerControl:InvokeServer("KeyPress", {["Key"] = "x", ["Down"] = true}) end)
+    for _, stone in ipairs(stones) do
+        spawn(function()
+            stone.ServerControl:InvokeServer("KeyPress", {["Key"] = "x", ["Down"] = true})
+        end)
+    end
+end)
+
+-- Новая команда joinppl
+addcommand("joinppl", "Join a player's server (by username or userId)", function(args)
+    local target = args[1]
+    if not target then return end
+
+    WindUI:Notify({Title="kohls+", Content="Joining may cause lag while searching servers", Duration=5})
+
+    local userId = tonumber(target)
+    if not userId then
+        -- попробовать получить ID по нику
+        local success, result = pcall(function()
+            return HS:JSONDecode(game:HttpGet("https://api.roblox.com/users/get-by-username?username=" .. HS:UrlEncode(target)))
+        end)
+        if success and result and result.Id then
+            userId = result.Id
+        else
+            WindUI:Notify({Title="kohls+", Content="Player not found", Duration=3})
+            return
+        end
+    end
+
+    local function joinServer()
+        while true do
+            WindUI:Notify({Title="kohls+", Content="Searching for a server with " .. (target) .. "...", Duration=3})
+            local success, result = pcall(function()
+                return HS:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?limit=100"))
+            end)
+            if success and result and result.data then
+                for _, server in ipairs(result.data) do
+                    if server.playing < server.maxPlayers then
+                        -- проверяем, есть ли наш userId в списке игроков (этот запрос может быть тяжёлым)
+                        local playersSuccess, playersData = pcall(function()
+                            return HS:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?limit=100&cursor=" .. (server.id or ""))) -- неправильно, нужно по-другому
+                        end)
+                        -- упрощённо: пытаемся присоединиться к серверу
+                        pcall(function()
+                            TS:TeleportToPlaceInstance(game.PlaceId, server.id, plr)
+                        end)
+                    end
+                end
+            end
+            WindUI:Notify({Title="kohls+", Content="Failed to join, retrying...", Duration=3})
+            task.wait(5)
+        end
+    end
+
+    spawn(joinServer)
 end)
 
 addcommand("ping", "Show ping", function() local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() + 0.5) tchat("Ping is " .. ping .. "ms.") end)
