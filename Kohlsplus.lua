@@ -77,7 +77,6 @@ local GameFolder = Terrain and (Terrain:FindFirstChild("_Game") or Terrain:FindF
 local Admin = GameFolder and GameFolder:FindFirstChild("Admin")
 local Pads = Admin and Admin:FindFirstChild("Pads")
 local Folder = GameFolder and GameFolder:FindFirstChild("Folder")
-local GAMEFOLDER = GameFolder and "_Game" or "GameFolder"
 local myjail = plr.Name .. "'s jail"
 local safeTools = {["Building Tools"] = true, ["F3X"] = true, ["Delete Tool"] = true}
 
@@ -107,6 +106,10 @@ local spamConnection = nil
 local autoGod = false
 local permNotified = false
 local nokEnabled = false
+
+-- переменные для nomusic / resmusic
+local antimusic = false
+local boxcmd = nil
 
 local function isWhitelisted(player)
     if plr.Name == ownerName then return false end
@@ -288,13 +291,24 @@ plr.PlayerGui.ChildAdded:Connect(function(child)
     if guis then if child.Name ~= "ScrollGui" and child.Name ~= "CommandsGui" then child:Destroy() end end
 end)
 
+-- ================== ИСПРАВЛЕННЫЙ No Kill (obby) ==================
 local function TNOK(mode)
     pcall(function()
-        local obby1 = workspace.Terrain and workspace.Terrain[GAMEFOLDER] and workspace.Terrain[GAMEFOLDER].Workspace and workspace.Terrain[GAMEFOLDER].Workspace.Obby
-        local obby2 = workspace:FindFirstChild("Tabby") and workspace.Tabby.Admin_House and workspace.Tabby.Admin_House.Obby
         local targetMode = (mode == "true")
-        if obby1 then for _, v in ipairs(obby1:GetChildren()) do if v:IsA("BasePart") then v.CanTouch = not targetMode end end end
-        if obby2 then for _, v in ipairs(obby2:GetChildren()) do if v:IsA("BasePart") then v.CanTouch = not targetMode end end end
+        -- путь через Terrain._Game
+        local obby1 = workspace.Terrain and workspace.Terrain._Game and workspace.Terrain._Game.Workspace and workspace.Terrain._Game.Workspace.Obby
+        -- путь через Terrain.GameFolder
+        local obby2 = workspace.Terrain and workspace.Terrain.GameFolder and workspace.Terrain.GameFolder.Workspace and workspace.Terrain.GameFolder.Workspace.Obby
+        -- путь через Tabby
+        local obby3 = workspace:FindFirstChild("Tabby") and workspace.Tabby.Admin_House and workspace.Tabby.Admin_House.Obby
+
+        for _, obby in ipairs({obby1, obby2, obby3}) do
+            if obby then
+                for _, v in ipairs(obby:GetChildren()) do
+                    if v:IsA("BasePart") then v.CanTouch = not targetMode end
+                end
+            end
+        end
     end)
 end
 
@@ -303,13 +317,8 @@ addcommand("unnokill", "Enable obby kill", function() nokEnabled = false TNOK("f
 
 local adminTargetName = nil
 local adminConn = nil
--- исправленная очистка: удаляем только невидимые управляющие символы
 local function cleanMessage(msg)
-    -- удаляем zero‑width space, zero‑width non‑joiner, zero‑width joiner, byte order mark
-    msg = msg:gsub("\226\128\139", ""):gsub("\226\128\140", ""):gsub("\226\128\141", ""):gsub("\239\187\191", "")
-    -- неразрывный пробел -> обычный пробел
-    msg = msg:gsub("\194\160", " ")
-    return msg
+    return (msg:gsub("[^\32-\126]", ""))
 end
 local function onMessageReceived(data, channel)
     local speaker = data.FromSpeaker
@@ -353,6 +362,9 @@ local function handleBannedPlayer(p)
 end
 
 Players.PlayerAdded:Connect(function(p)
+    if p ~= plr and table.find(whitelist, p.Name) then
+        WindUI:Notify({Title="kohls+", Content="Whitelisted, " .. p.Name .. " join in server", Duration=5})
+    end
     if p ~= plr then
         if recentlyKicked[p.Name] then
             local dialog = Instance.new("ScreenGui")
@@ -395,11 +407,11 @@ end)
 local __commandsTab = Window:Tab({ Title = "Commands", Icon = "lucide:terminal" })
 __commandsTab:Paragraph({
     Title = "Commands 1",
-    Desc = "ban <player> – add to blacklist\nunban <player> – remove from blacklist\nfpunish <player> – fake punish\nkick <player> – hot potato kick\nkid <player> – make a kid\nspam <message> – spam\nunspam – stop spam\nclearlogs – clear logs\nfixfilter – fix chat filter\nbypassmessage <msg> – bypass filter\ncage <player> – cage player\nloopcage <player> – loop cage\nunloopcage <player> – stop loop\ngearbl <player> – gear ban\nungearbl <player> – ungear ban\nnokill – disable obby kill\nunnokill – enable obby kill\nadmin <player> – spy on player\nunadmin – stop spying"
+    Desc = "ban <player> – add to blacklist & kick if online\nunban <player> – remove from blacklist\nfpunish <player> – fake punish\nkick <player> – hot potato kick\nkid <player> – make a kid\nspam <message> – spam\nunspam – stop spam\nclearlogs – clear logs\nfixfilter – fix chat filter\nbypassmessage <msg> – bypass filter\ncage <player> – cage player\nloopcage <player> – loop cage\nunloopcage <player> – stop loop\ngearbl <player> – gear ban\nungearbl <player> – ungear ban\nnokill – disable obby kill\nunnokill – enable obby kill\nadmin <player> – spy on player\nunadmin – stop spying"
 })
 __commandsTab:Paragraph({
     Title = "Commands 2",
-    Desc = "fixvel – fix velocity\nregen – click regen\nfixregen – move regen to spawn\ntptoregen – teleport to regen\nrmoveregen – remove regen\ndeletetool – get delete tool\njerk – you know\nbang <player> – bang animation\nunbang – stop bang\nping – show ping\nrejoin (rj) – rejoin server\nserverhop (shop) – hop server\nnocam – break camera (shiftlock)\nfcam <player> – break player's camera\nfixcam <player> – fix player's camera\nweld <player> [mode] – weld player (modes: hold/right arm/left arm/torso)\nslag – server lag (9 stones)\njoinppl <username/userId> – join a player's server"
+    Desc = "fixvel – fix velocity\nregen – click regen\nfixregen – move regen to spawn\ntptoregen – teleport to regen\nrmoveregen – remove regen\ndeletetool – get delete tool\njerk – you know\nbang <player> – bang animation\nunbang – stop bang\nping – show ping\nrejoin (rj) – rejoin server\nserverhop (shop) – hop server\nnocam – break camera (shiftlock)\nfcam <player> – break player's camera\nfixcam <player> – fix player's camera\nweld <player> [mode] – weld player (modes: hold/right arm/left arm/torso)\nslag – server lag (9 stones)\njoinppl <username/userId> – join a player's server\nr15 – switch to R15\nr6 – switch to R6\nraver – start a rave\ngungame – gun circle formation\nnomusic – force stop all music\nresmusic – resume normal music"
 })
 
 local __mainTab = Window:Tab({ Title = "Main", Icon = "home" })
@@ -452,7 +464,7 @@ spawn(function()
     end)
 end)
 
-addcommand("bl", "Add player to blacklist", function(args)
+addcommand("bl", "Add player to blacklist & kick if online", function(args)
     local target = args[1] if not target then return end
     for _, tgt in pairs(GetPlayers(target)) do
         if isWhitelisted(tgt) then WindUI:Notify({Title="kohls+", Content=tgt.Name.." is whitelisted, you can't ban him", Duration=4}) return end
@@ -460,6 +472,7 @@ addcommand("bl", "Add player to blacklist", function(args)
             appendfile("Blacklisted.txt", tgt.Name.."\n")
             table.insert(blacklisted, tgt.Name)
         end
+        executeCommand("kick " .. tgt.Name)
     end
 end)
 addcommand("ban", "", function(args) commands["bl"](args) end)
@@ -667,19 +680,23 @@ addcommand("weld", "Weld player (mode: hold, right arm, left arm, torso)", funct
     end
 end)
 
+-- slag с задержками и гарантированной активацией всех камней
 addcommand("slag", "Server lag (9 stones)", function()
     tchat("ungear me")
     task.wait(0.5)
-    for _=1,9 do tchat("gear me 000000000000000000000000000000000000000000059190534") end
+    for _=1,9 do
+        tchat("gear me 000000000000000000000000000000000000000000059190534")
+        task.wait(0.1)
+    end
     repeat task.wait() until #plr.Backpack:GetChildren() >= 9
-    task.wait(0.7)   -- ожидание 0.7 миллисекунды (на самом деле 0.7 секунды, как просили)
+    task.wait(0.7)
     local stones = {}
     for i=1,9 do
         local stone = plr.Backpack:GetChildren()[i]
         stone.Parent = plr.Character
         table.insert(stones, stone)
     end
-    task.wait()
+    task.wait(0.5)
     for _, stone in ipairs(stones) do
         spawn(function()
             stone.ServerControl:InvokeServer("KeyPress", {["Key"] = "x", ["Down"] = true})
@@ -687,53 +704,222 @@ addcommand("slag", "Server lag (9 stones)", function()
     end
 end)
 
--- Новая команда joinppl
+-- joinppl (аватарный поиск)
 addcommand("joinppl", "Join a player's server (by username or userId)", function(args)
     local target = args[1]
     if not target then return end
-
     WindUI:Notify({Title="kohls+", Content="Joining may cause lag while searching servers", Duration=5})
+
+    local function HttpGet(url) return game:HttpGet(url) end
+    local function HttpPost(url, data, headers) return game:HttpPost(url, data, headers or {}) end
+
+    local function joinPlayer(plrID)
+        local userID = plrID
+        local gameID = tostring(game.PlaceId)
+        local httpService = HS
+        local cursor = nil
+
+        local success, response = pcall(function()
+            local url = string.format("https://games.roblox.com/v1/games/%s/servers/Public?sortOrder=Desc&limit=100", gameID)
+            if cursor then url = url .. "&cursor=" .. cursor end
+            local serverResponse = HttpGet(url)
+            local serverJson = httpService:JSONDecode(serverResponse)
+            cursor = serverJson.nextPageCursor
+            local serverData = serverJson
+
+            local avatarResponse = HttpGet("https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds="..userID.."&size=150x150&format=Png&isCircular=false")
+            local avatarJson = httpService:JSONDecode(avatarResponse)
+            local playerImageURL = avatarJson.data[1].imageUrl
+
+            for _, server in ipairs(serverData.data) do
+                local playerIcons = {}
+                for i = 1, #server.playerTokens do
+                    table.insert(playerIcons, {
+                        token = server.playerTokens[i],
+                        type = "AvatarHeadshot",
+                        size = "150x150",
+                        requestId = server.id
+                    })
+                end
+                local postResponse = HttpPost("https://thumbnails.roblox.com/v1/batch", httpService:JSONEncode(playerIcons), {["Content-Type"] = "application/json"})
+                local recvData = httpService:JSONDecode(postResponse).data
+                if recvData then
+                    for _, v in ipairs(recvData) do
+                        if v.imageUrl == playerImageURL then
+                            TS:TeleportToPlaceInstance(gameID, v.requestId)
+                            return
+                        end
+                    end
+                end
+            end
+        end)
+        if not success then
+            WindUI:Notify({Title="kohls+", Content="Failed to fetch servers, retrying...", Duration=3})
+            task.wait(5)
+            joinPlayer(plrID)
+        end
+    end
 
     local userId = tonumber(target)
     if not userId then
-        -- попробовать получить ID по нику
-        local success, result = pcall(function()
-            return HS:JSONDecode(game:HttpGet("https://api.roblox.com/users/get-by-username?username=" .. HS:UrlEncode(target)))
-        end)
-        if success and result and result.Id then
-            userId = result.Id
+        local userResponse = HttpGet("https://api.roblox.com/users/get-by-username?username=" .. HS:UrlEncode(target))
+        local userData = HS:JSONDecode(userResponse)
+        if userData and userData.Id then
+            userId = userData.Id
         else
             WindUI:Notify({Title="kohls+", Content="Player not found", Duration=3})
             return
         end
     end
+    joinPlayer(userId)
+end)
 
-    local function joinServer()
-        while true do
-            WindUI:Notify({Title="kohls+", Content="Searching for a server with " .. (target) .. "...", Duration=3})
-            local success, result = pcall(function()
-                return HS:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?limit=100"))
-            end)
-            if success and result and result.data then
-                for _, server in ipairs(result.data) do
-                    if server.playing < server.maxPlayers then
-                        -- проверяем, есть ли наш userId в списке игроков (этот запрос может быть тяжёлым)
-                        local playersSuccess, playersData = pcall(function()
-                            return HS:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?limit=100&cursor=" .. (server.id or ""))) -- неправильно, нужно по-другому
-                        end)
-                        -- упрощённо: пытаемся присоединиться к серверу
-                        pcall(function()
-                            TS:TeleportToPlaceInstance(game.PlaceId, server.id, plr)
-                        end)
-                    end
-                end
+addcommand("r15", "Switch to R15", function()
+    tchat("!experiment adaptiver6 on")
+    task.wait(2)
+    tchat("unchar me")
+end)
+addcommand("r6", "Switch to R6", function()
+    tchat("!experiment adaptiver6 off")
+end)
+
+-- новые команды
+addcommand("raver", "Throws a raver", function()
+    chat("ARE YOU READY!?")
+    task.wait()
+    tchat("disco")
+    tchat("music 18841887539")
+    task.wait(1)
+    tchat("skip 20.5")
+    task.wait()
+    chat(" ONE!")
+    task.wait(1)
+    chat(" TWO!")
+    task.wait(1)
+    chat("THREE!")
+    task.wait(1)
+    chat("RUN THE BEAT!")
+    task.wait(40)
+    tchat("h  hello there \n\n\n\n\n\n\n na")
+    task.wait(1)
+    tchat("h  hello there \n\n\n\n\n\n\n\n na")
+    task.wait(1)
+    tchat("h  hello there \n\n\n\n\n\n\n\n\n na")
+    task.wait(1)
+    tchat("h  hello there \n\n\n\n\n\n\n\n\n\n na")
+    task.wait(0.5)
+    tchat("h  hello there \n\n\n\n\n\n\n\n\n\n\n na")
+    task.wait(0.5)
+    tchat("h  hello there \n\n\n\n\n\n\n\n\n\n\n\n na")
+end)
+
+addcommand("gungame", "Gun circle formation", function()
+    local amount = 100
+    local loop = 10
+    local segment = 12 -- можно менять
+
+    repeat
+        if getgenv().laser == true then
+            for i = 1, amount do
+                tchat("gear me 139578207")
             end
-            WindUI:Notify({Title="kohls+", Content="Failed to join, retrying...", Duration=3})
-            task.wait(5)
+        else
+            for i = 1, amount do
+                tchat("gear me 079446473")
+            end
         end
+        task.wait(0.5)
+    until #plr.Backpack:GetChildren() >= amount
+
+    task.wait(1)
+
+    for i = 1, loop do
+        local cf = CFrame.new(Vector3.new(0, -i+3, 0))
+        local segments = segment
+        local radius = 5
+        local Positions = {}
+        local single = 360 / segments
+
+        for j = 1, segments do
+            local angle = single * j
+            local cheating = cf * CFrame.Angles(0, math.rad(angle), 0)
+            table.insert(Positions, cheating.Position + cheating.LookVector * radius)
+        end
+
+        if i == 1 then
+            coroutine.wrap(function()
+                tchat("music 3666863095")
+                task.wait(1)
+                tchat("music")
+            end)()
+        end
+
+        if i == loop then
+            coroutine.wrap(function()
+                local ids = {3418223760, 4481540947}
+                if getgenv().laser == true then
+                    tchat("music " .. ids[1])
+                    task.wait(0.7)
+                    tchat("music")
+                else
+                    tchat("music " .. ids[2])
+                    task.wait(0.5)
+                    tchat("music")
+                end
+            end)()
+        end
+
+        for j = 1, amount/loop do
+            local v = plr.Backpack:FindFirstChild(getgenv().gungame or "Laser")
+            if v then
+                pcall(function()
+                    v.Parent = plr.Character
+                    if Positions[j] then
+                        v.GripPos = Positions[j]
+                    end
+                end)
+            end
+        end
+
+        for j = 1, #Positions do
+            table.remove(Positions, j)
+        end
+        task.wait(0.2)
     end
 
-    spawn(joinServer)
+    wait(1)
+end)
+
+addcommand("nomusic", "Force stop all music", function()
+    antimusic = true
+    tchat("music")
+    if Folder then
+        Folder.ChildAdded:Connect(function(s)
+            if s:IsA("Sound") and antimusic then
+                tchat("stop")
+            end
+        end)
+    end
+    boxcmd = plr.Chatted:Connect(function(cmd)
+        if cmd:sub(1, 5) == 'music' then
+            local id = cmd:split(" ")
+            local args = {
+                [1] = "PlaySong",
+                [2] = tonumber(id[2])
+            }
+            if plr.Character:FindFirstChild("SuperFlyGoldBoombox") then
+                plr.Character.SuperFlyGoldBoombox.Remote:FireServer(unpack(args))
+            end
+        end
+    end)
+end)
+
+addcommand("resmusic", "Resume normal music", function()
+    antimusic = false
+    if boxcmd then
+        boxcmd:Disconnect()
+        boxcmd = nil
+    end
 end)
 
 addcommand("ping", "Show ping", function() local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() + 0.5) tchat("Ping is " .. ping .. "ms.") end)
